@@ -141,17 +141,6 @@
             html5QrCode.start({ facingMode: "environment" }, { fps: 15, qrbox: 280 }, onScanSuccess);
         }
 
-        function closeScanner() {
-            if (html5QrCode) {
-                html5QrCode.stop().then(() => {
-                    document.getElementById('full-scan-overlay').style.display = 'none';
-                    loadPassaggi(); // Rafraîchit le dashboard au retour
-                });
-            } else {
-                document.getElementById('full-scan-overlay').style.display = 'none';
-            }
-        }
-
         async function onScanSuccess(decodedText) {
             if (isProcessing) return;
             isProcessing = true;
@@ -161,7 +150,7 @@
             feedback.classList.remove('hidden');
 
             if (member) {
-                playFeedback(); // Fonction bip/vibration
+                playFeedback(); 
                 const status = member.Stato ? member.Stato.toUpperCase() : "INCONNU";
                 document.getElementById('resName').innerText = `${member.Nome} ${member.Cognome}`;
                 document.getElementById('resStatus').innerText = status;
@@ -169,30 +158,59 @@
                 if (status === "ATTIVO") {
                     feedback.className = "absolute inset-x-0 bottom-0 h-1/2 glass flex flex-col items-center justify-center text-center p-8 attivo-bg";
                     document.getElementById('resPassage').innerText = "...";
+                    
                     try {
                         const response = await fetch(`${SCRIPT_URL}?qr=${decodedText.trim()}`);
                         const resData = await response.json();
+                        
                         if (resData.result === "already_scanned") {
-                            feedback.classList.add('already-bg');
+                            // CAS BLEU : On reste bloqué ici pour que Marco voit l'alerte
+                            feedback.className = "absolute inset-x-0 bottom-0 h-1/2 glass flex flex-col items-center justify-center text-center p-8 already-bg";
                             document.getElementById('resPassage').innerHTML = `<span class="text-xl">DÉJÀ PASSÉ</span><br>N° ${resData.num}`;
+                            isProcessing = false; // On permet de cliquer sur Retour
+                            return; // STOP ICI, pas de fermeture auto
                         } else {
+                            // CAS VERT : Succès
                             document.getElementById('resPassage').innerText = `N° ${resData.num}`;
+                            // Fermeture automatique UNIQUEMENT en cas de succès vert
+                            setTimeout(() => { 
+                                isProcessing = false; 
+                                closeScanner();
+                            }, 3000);
                         }
-                    } catch (e) { document.getElementById('resPassage').innerText = "OK"; }
+                    } catch (e) { 
+                        document.getElementById('resPassage').innerText = "SYNCHRO OK";
+                        setTimeout(() => { isProcessing = false; closeScanner(); }, 2000);
+                    }
                 } else {
+                    // CAS ROUGE : On reste bloqué ici
                     feedback.className = "absolute inset-x-0 bottom-0 h-1/2 glass flex flex-col items-center justify-center text-center p-8 inattivo-bg";
-                    document.getElementById('resPassage').innerText = "ACCÈS REFUSÉ";
+                    document.getElementById('resPassage').innerText = "🚫 ACCÈS REFUSÉ";
+                    isProcessing = false; 
+                    return; // STOP ICI, pas de fermeture auto
                 }
             } else {
+                // CAS MEMBRE INCONNU
                 document.getElementById('resName').innerText = "INCONNU";
                 document.getElementById('resPassage').innerText = "NON TROUVÉ";
+                isProcessing = false;
             }
-            
-            // Fermeture automatique après 4 secondes
-            setTimeout(() => { 
-                isProcessing = false; 
-                closeScanner();
-            }, 4000);
+        }
+
+        function closeScanner() {
+            // Réinitialise l'état de traitement pour le prochain scan
+            isProcessing = false; 
+            if (html5QrCode) {
+                html5QrCode.stop().then(() => {
+                    document.getElementById('full-scan-overlay').style.display = 'none';
+                    // Petit délai avant de recharger pour laisser le temps à Google de publier le CSV
+                    setTimeout(loadPassaggi, 1000); 
+                }).catch(() => {
+                    document.getElementById('full-scan-overlay').style.display = 'none';
+                });
+            } else {
+                document.getElementById('full-scan-overlay').style.display = 'none';
+            }
         }
 
         function playFeedback() {
@@ -250,3 +268,4 @@
     </script>
 </body>
 </html>
+
