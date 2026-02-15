@@ -15,8 +15,10 @@
         h1 { color: #fff; font-size: 1.5rem; }
         .member-name { font-size: 2rem; font-weight: bold; margin-bottom: 10px; }
         .status-text { font-size: 1.5rem; text-transform: uppercase; letter-spacing: 2px; }
+        .passage-info { margin-top: 10px; font-style: italic; color: #ffeb3b; }
         @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
         #loading { color: #888; margin-bottom: 10px; }
+        #startBtn { padding: 15px; font-size: 18px; margin-bottom: 20px; border-radius: 10px; cursor: pointer; background: #2196f3; color: white; border: none; }
     </style>
 </head>
 <body>
@@ -24,20 +26,25 @@
     <h1>SCANNER DE CONTRÔLE 2026</h1>
     <div id="loading">Chargement de la base de données...</div>
     
-    <button id="startBtn" style="padding: 15px; font-size: 18px; margin-bottom: 20px; border-radius: 10px; cursor: pointer; display:none;">
-        📷 CLIQUEZ ICI POUR SCANNER
-    </button>
+    <button id="startBtn" style="display:none;">📷 CLIQUEZ ICI POUR SCANNER</button>
 
     <div id="reader"></div>
 
     <div id="result">
         <div class="member-name" id="nameDisplay"></div>
         <div class="status-text" id="statusDisplay"></div>
+        <div class="passage-info" id="passageDisplay"></div>
     </div>
 
     <script>
-        const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSc3LZw98cFyqm2XGSEYYF3IOf5fHB3Pff8vLLlCD-VgvIicvX6jYWH-QDSbn5dZvpPhHjrXoIH4Hu9/pub?gid=0&single=true&output=csv'; // Remettez bien votre lien ici
+        // 1. LIEN DE VOTRE BASE DE DONNÉES
+        const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSc3LZw98cFyqm2XGSEYYF3IOf5fHB3Pff8vLLlCD-VgvIicvX6jYWH-QDSbn5dZvpPhHjrXoIH4Hu9/pub?gid=0&single=true&output=csv'; 
+        
+        // 2. LIEN DE VOTRE SCRIPT (COPIER-COLLER LE LIEN /exec ICI)
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwwDMSA_TrLhZkdup_V7GkzS_upZ_PenHKg_NTTyQB18JKppMYgNAm47xN-L68u1BrK/exec'; 
+
         let membersData = [];
+        let isProcessing = false; // Empêche les scans multiples trop rapides
 
         function loadDatabase() {
             Papa.parse(CSV_URL, {
@@ -51,9 +58,8 @@
             });
         }
 
-        // On lance le scanner uniquement quand on clique sur le bouton
         document.getElementById('startBtn').addEventListener('click', function() {
-            this.style.display = 'none'; // Cache le bouton après clic
+            this.style.display = 'none';
             startScanner();
         });
 
@@ -62,36 +68,59 @@
             const config = { fps: 10, qrbox: { width: 250, height: 250 } };
             
             html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess)
-            .catch(err => {
-                alert("Erreur caméra : " + err);
-            });
+            .catch(err => { alert("Erreur caméra : " + err); });
         }
 
-        function onScanSuccess(decodedText) {
+        async function onScanSuccess(decodedText) {
+            if (isProcessing) return; // Si on est déjà en train d'enregistrer, on ignore
+            isProcessing = true;
+
             const member = membersData.find(m => m.Codice_QR && m.Codice_QR.trim() === decodedText.trim());
             const resultDiv = document.getElementById('result');
+            const passageDisplay = document.getElementById('passageDisplay');
+            
             resultDiv.style.display = 'block';
+            passageDisplay.innerText = "Enregistrement en cours...";
 
             if (member) {
-                document.getElementById('nameDisplay').innerText = member.Nome + " " + member.Cognome;
+                const nome = member.Nome;
+                const cognome = member.Cognome;
                 const status = member.Stato ? member.Stato.toUpperCase() : "INCONNU";
-                document.getElementById('statusDisplay').innerText = status;
 
-                if (status === "ATTIVO") {
-                    resultDiv.className = 'attivo';
-                } else {
-                    resultDiv.className = 'inattivo';
+                document.getElementById('nameDisplay').innerText = nome + " " + cognome;
+                document.getElementById('statusDisplay').innerText = status;
+                resultDiv.className = (status === "ATTIVO") ? 'attivo' : 'inattivo';
+
+                // --- ENVOI DES DONNÉES AU GOOGLE SCRIPT ---
+                try {
+                    const response = await fetch(SCRIPT_URL, {
+                        method: 'POST',
+                        mode: 'no-cors', // Important pour Google Script
+                        cache: 'no-cache',
+                        body: JSON.stringify({ qr: decodedText.trim() })
+                    });
+                    
+                    // Comme on est en 'no-cors', on ne peut pas lire la réponse JSON, 
+                    // mais le script s'exécute quand même côté Google.
+                    passageDisplay.innerText = "✅ Passage enregistré & Email envoyé";
+                } catch (error) {
+                    console.error(error);
+                    passageDisplay.innerText = "❌ Erreur d'enregistrement";
                 }
+
             } else {
                 resultDiv.className = '';
                 resultDiv.style.background = '#333';
                 document.getElementById('nameDisplay').innerText = "MEMBRE NON TROUVÉ";
                 document.getElementById('statusDisplay').innerText = "Code: " + decodedText;
+                passageDisplay.innerText = "";
             }
+
+            // Attendre 3 secondes avant de permettre un nouveau scan
+            setTimeout(() => { isProcessing = false; }, 3000);
         }
 
         window.onload = loadDatabase;
     </script>
 </body>
-
 </html>
