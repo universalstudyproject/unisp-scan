@@ -3,135 +3,193 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>UNISP</title>
+    <title>UNISP - Premium Access</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: sans-serif; background: #121212; color: white; text-align: center; margin: 0; padding: 20px; }
-        #reader { width: 100%; max-width: 500px; margin: auto; border-radius: 15px; overflow: hidden; border: 2px solid #333; }
-        #result { margin-top: 20px; padding: 20px; border-radius: 15px; min-height: 100px; display: none; }
-        .attivo { background: #2e7d32; border: 4px solid #4caf50; }
-        .inattivo { background: #c62828; border: 4px solid #f44336; animation: blink 1s infinite; }
-        h1 { color: #fff; font-size: 1.5rem; }
-        .member-name { font-size: 2rem; font-weight: bold; margin-bottom: 10px; }
-        .status-text { font-size: 1.5rem; text-transform: uppercase; letter-spacing: 2px; }
-        .passage-info { 
-            margin-top: 15px; 
-            font-size: 3rem; /* Très gros */
-            font-weight: 900; 
-            color: #ffeb3b; 
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
-            background: rgba(0,0,0,0.2);
-            border-radius: 10px;
-            padding: 10px;
-        }
-        .gia-scansionato { background: #0277bd !important; border: 4px solid #03a9f4 !important; }
-        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
-        #loading { color: #888; margin-bottom: 10px; }
-        #startBtn { padding: 15px; font-size: 18px; margin-bottom: 20px; border-radius: 10px; cursor: pointer; background: #2196f3; color: white; border: none; }
+        body { font-family: 'Inter', sans-serif; background: #0f172a; color: #f8fafc; margin: 0; padding-bottom: 80px; }
+        .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); }
+        .tab-active { border-bottom: 3px solid #3b82f6; color: #3b82f6; }
+        .status-badge { padding: 2px 10px; border-radius: 9999px; font-size: 0.75rem; font-weight: bold; }
+        #reader { border-radius: 1.5rem; overflow: hidden; border: none !important; margin-top: 10px; }
+        #reader video { border-radius: 1.5rem; }
+        .attivo-bg { background: linear-gradient(135deg, #16a34a 0%, #064e3b 100%) !important; }
+        .inattivo-bg { background: linear-gradient(135deg, #dc2626 0%, #7f1d1d 100%) !important; }
+        .already-bg { background: linear-gradient(135deg, #0277bd 0%, #01579b 100%) !important; }
+        .passage-num { font-size: 3.5rem; font-weight: 900; color: #ffeb3b; text-shadow: 0 4px 10px rgba(0,0,0,0.3); }
     </style>
 </head>
 <body>
 
-    <h1>SCANNER DE CONTRÔLE 2026</h1>
-    <div id="loading">Chargement de la base de données...</div>
-    
-    <button id="startBtn" style="display:none;">📷 CLIQUEZ ICI POUR SCANNER</button>
+    <header class="p-6 text-center">
+        <div class="inline-flex items-center justify-center w-14 h-14 bg-blue-600 rounded-2xl shadow-lg shadow-blue-500/30 mb-3">
+            <span class="text-xl font-bold italic">U</span>
+        </div>
+        <h1 class="text-lg font-bold tracking-tight">UNISP <span class="text-blue-500 font-light">SYSTEM</span></h1>
+    </header>
 
-    <div id="reader"></div>
+    <main class="max-w-md mx-auto px-4">
+        <nav class="flex justify-around mb-6 border-b border-slate-800">
+            <button onclick="switchTab('scan')" id="tab-scan" class="pb-3 px-6 font-bold tab-active">SCANNER</button>
+            <button onclick="switchTab('list')" id="tab-list" class="pb-3 px-6 font-bold text-slate-500">MEMBRES</button>
+        </nav>
 
-    <div id="result">
-        <div class="member-name" id="nameDisplay"></div>
-        <div class="status-text" id="statusDisplay"></div>
-        <div class="passage-info" id="passageDisplay"></div>
+        <section id="view-scan" class="space-y-4">
+            <div id="loading" class="text-center text-xs text-slate-500 italic">Chargement base de données...</div>
+            
+            <button id="startBtn" class="w-full bg-blue-600 hover:bg-blue-700 py-4 rounded-2xl font-bold shadow-xl transition-all active:scale-95 hidden">
+                📷 DÉMARRER LE SCAN
+            </button>
+
+            <div id="reader" class="shadow-2xl"></div>
+
+            <div id="result" class="glass p-8 rounded-3xl hidden text-center transition-all duration-500">
+                <p id="nameDisplay" class="text-2xl font-bold mb-1"></p>
+                <p id="statusDisplay" class="text-xs font-semibold tracking-widest uppercase opacity-70 mb-4"></p>
+                <div id="passageDisplay" class="passage-num"></div>
+            </div>
+        </section>
+
+        <section id="view-list" class="hidden space-y-4">
+            <input type="text" id="searchInput" onkeyup="filterMembers()" placeholder="Rechercher par nom..." 
+                class="w-full bg-slate-800 border border-slate-700 rounded-xl px-5 py-4 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-inner text-white">
+            
+            <div id="membersList" class="space-y-3">
+                </div>
+        </section>
+    </main>
+
+    <div id="memberModal" class="fixed inset-0 bg-black/90 hidden z-50 flex items-center justify-center p-4 backdrop-blur-md">
+        <div class="glass w-full max-w-sm rounded-[2rem] overflow-hidden shadow-2xl border border-white/10">
+            <div class="p-6 border-b border-slate-700 flex justify-between items-center bg-white/5">
+                <h3 class="font-bold">Détails de l'adhérent</h3>
+                <button onclick="closeModal()" class="w-8 h-8 flex items-center justify-center rounded-full bg-white/10 text-xl">&times;</button>
+            </div>
+            <div id="modalContent" class="p-6 max-h-[60vh] overflow-y-auto space-y-4 text-sm leading-relaxed">
+                </div>
+            <div class="p-4">
+                <button onclick="closeModal()" class="w-full py-4 bg-blue-600 rounded-2xl font-bold shadow-lg shadow-blue-600/20">OK</button>
+            </div>
+        </div>
     </div>
 
     <script>
-        // 1. LIEN DE VOTRE BASE DE DONNÉES
-        const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSc3LZw98cFyqm2XGSEYYF3IOf5fHB3Pff8vLLlCD-VgvIicvX6jYWH-QDSbn5dZvpPhHjrXoIH4Hu9/pub?gid=0&single=true&output=csv'; 
-        
-        // 2. LIEN DE VOTRE SCRIPT (COPIER-COLLER LE LIEN /exec ICI)
-        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwwDMSA_TrLhZkdup_V7GkzS_upZ_PenHKg_NTTyQB18JKppMYgNAm47xN-L68u1BrK/exec'; 
+        // TES URLS SONT ICI (RÉCUPÉRÉES DE TON CODE)
+        const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSc3LZw98cFyqm2XGSEYYF3IOf5fHB3Pff8vLLlCD-VgvIicvX6jYWH-QDSbn5dZvpPhHjrXoIH4Hu9/pub?gid=0&single=true&output=csv';
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwwDMSA_TrLhZkdup_V7GkzS_upZ_PenHKg_NTTyQB18JKppMYgNAm47xN-L68u1BrK/exec';
 
         let membersData = [];
-        let isProcessing = false; // Empêche les scans multiples trop rapides
+        let isProcessing = false;
 
-        function loadDatabase() {
+        // Chargement initial
+        window.onload = () => {
             Papa.parse(CSV_URL, {
                 download: true,
                 header: true,
-                complete: function(results) {
-                    membersData = results.data;
-                    document.getElementById('loading').innerText = "✅ " + membersData.length + " membres chargés";
-                    document.getElementById('startBtn').style.display = 'inline-block';
+                complete: (results) => {
+                    membersData = results.data.filter(m => m.Nome);
+                    document.getElementById('loading').innerText = `✅ ${membersData.length} membres synchronisés`;
+                    document.getElementById('startBtn').style.display = 'block';
+                    renderList(membersData);
                 }
             });
+        };
+
+        function switchTab(tab) {
+            document.getElementById('view-scan').classList.toggle('hidden', tab !== 'scan');
+            document.getElementById('view-list').classList.toggle('hidden', tab !== 'list');
+            document.getElementById('tab-scan').className = tab === 'scan' ? 'pb-3 px-6 font-bold tab-active' : 'pb-3 px-6 font-bold text-slate-500';
+            document.getElementById('tab-list').className = tab === 'list' ? 'pb-3 px-6 font-bold tab-active' : 'pb-3 px-6 font-bold text-slate-500';
         }
 
+        // --- LOGIQUE SCANNER ---
         document.getElementById('startBtn').addEventListener('click', function() {
             this.style.display = 'none';
-            startScanner();
-        });
-
-        function startScanner() {
             const html5QrCode = new Html5Qrcode("reader");
-            const config = { fps: 10, qrbox: { width: 250, height: 250 } };
-            
-            html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess)
-            .catch(err => { alert("Erreur caméra : " + err); });
-        }
+            html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, onScanSuccess);
+        });
 
         async function onScanSuccess(decodedText) {
             if (isProcessing) return;
             isProcessing = true;
 
             const member = membersData.find(m => m.Codice_QR && m.Codice_QR.trim() === decodedText.trim());
-            const resultDiv = document.getElementById('result');
-            const passageDisplay = document.getElementById('passageDisplay');
-            
-            resultDiv.style.display = 'block';
-            passageDisplay.innerText = "Vérification...";
+            const resDiv = document.getElementById('result');
+            const passDisp = document.getElementById('passageDisplay');
+            resDiv.classList.remove('hidden');
 
             if (member) {
                 const status = member.Stato ? member.Stato.toUpperCase() : "INCONNU";
-                document.getElementById('nameDisplay').innerText = member.Nome + " " + member.Cognome;
+                document.getElementById('nameDisplay').innerText = `${member.Nome} ${member.Cognome}`;
                 document.getElementById('statusDisplay').innerText = status;
-                resultDiv.className = (status === "ATTIVO") ? 'attivo' : 'inattivo';
-
+                
                 if (status === "ATTIVO") {
+                    resDiv.className = 'glass p-8 rounded-3xl text-center attivo-bg';
+                    passDisp.innerText = "Calcul...";
                     try {
-                        const response = await fetch(SCRIPT_URL + "?qr=" + decodedText.trim());
+                        const response = await fetch(`${SCRIPT_URL}?qr=${decodedText.trim()}`);
                         const resData = await response.json();
-                        
                         if (resData.result === "already_scanned") {
-                            // C'est ici qu'on gère le bleu
-                            resultDiv.className = 'attivo gia-scansionato';
-                            passageDisplay.innerHTML = "DÉJÀ PASSÉ<br>N° " + resData.num;
-                        } else if (resData.result === "success") {
-                            resultDiv.className = 'attivo';
-                            passageDisplay.innerHTML = "N° " + resData.num;
+                            resDiv.classList.add('already-bg');
+                            passDisp.innerHTML = `<span class="text-xl">DÉJÀ PASSÉ</span><br>N° ${resData.num}`;
+                        } else {
+                            passDisp.innerHTML = `N° ${resData.num}`;
                         }
-                    } catch (e) {
-                        passageDisplay.innerText = "Erreur réseau";
-                    }
-                } 
-                else {
-                    // Si INATTIVO
-                    passageDisplay.innerHTML = "🚫 ACCÈS REFUSÉ";
+                    } catch (e) { passDisp.innerText = "SYNCHRO..."; }
+                } else {
+                    resDiv.className = 'glass p-8 rounded-3xl text-center inattivo-bg';
+                    passDisp.innerHTML = "🚫 REFUSÉ";
                 }
             } else {
-                resultDiv.className = '';
-                resultDiv.style.background = '#333';
-                document.getElementById('nameDisplay').innerText = "NON TROUVÉ";
-                passageDisplay.innerText = "";
+                resDiv.className = 'glass p-8 rounded-3xl text-center bg-slate-800';
+                document.getElementById('nameDisplay').innerText = "INCONNU";
+                passDisp.innerText = "";
             }
             setTimeout(() => { isProcessing = false; }, 3000);
         }
 
-        window.onload = loadDatabase;
+        // --- LOGIQUE LISTE ---
+        function renderList(data) {
+            const list = document.getElementById('membersList');
+            list.innerHTML = data.map((m, idx) => `
+                <div onclick="showDetails(${idx})" class="glass p-4 rounded-2xl flex justify-between items-center active:scale-[0.98] transition-all">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center font-bold text-blue-400">
+                            ${m.Nome[0]}
+                        </div>
+                        <div>
+                            <p class="font-bold text-sm">${m.Nome} ${m.Cognome}</p>
+                            <p class="text-[10px] text-slate-500 uppercase tracking-tighter">${m.Codice_QR || '-'}</p>
+                        </div>
+                    </div>
+                    <span class="status-badge ${m.Stato === 'ATTIVO' ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}">
+                        ${m.Stato}
+                    </span>
+                </div>
+            `).join('');
+        }
+
+        function filterMembers() {
+            const val = document.getElementById('searchInput').value.toLowerCase();
+            const filtered = membersData.filter(m => (m.Nome + " " + m.Cognome).toLowerCase().includes(val));
+            renderList(filtered);
+        }
+
+        function showDetails(idx) {
+            const m = membersData[idx];
+            const content = Object.entries(m).map(([key, value]) => `
+                <div class="bg-white/5 p-3 rounded-xl border border-white/5">
+                    <p class="text-[9px] uppercase text-slate-500 font-bold mb-1">${key.replace(/_/g, ' ')}</p>
+                    <p class="text-slate-100 font-medium">${value || '-'}</p>
+                </div>
+            `).join('');
+            document.getElementById('modalContent').innerHTML = content;
+            document.getElementById('memberModal').classList.remove('hidden');
+        }
+
+        function closeModal() { document.getElementById('memberModal').classList.add('hidden'); }
     </script>
 </body>
 </html>
-
-
-
