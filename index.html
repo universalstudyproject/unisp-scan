@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>UNISP SYSTEM PRO</title>
+    <title>UNISP SYSTEM PRO+</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
@@ -13,17 +13,21 @@
         .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); }
         .tab-active { border-bottom: 3px solid #3b82f6; color: #3b82f6; }
         .status-badge { padding: 2px 10px; border-radius: 9999px; font-size: 0.75rem; font-weight: bold; }
+        
         #fab-scan {
             position: fixed; bottom: 30px; right: 30px; width: 70px; height: 70px;
             border-radius: 50%; display: flex; align-items: center; justify-content: center;
             z-index: 50; box-shadow: 0 10px 25px rgba(59, 130, 246, 0.5);
         }
+
         #full-scan-overlay {
             position: fixed; inset: 0; background: #0f172a; z-index: 200;
             display: none; flex-direction: column; align-items: center;
         }
+
         #reader { width: 100% !important; height: 60% !important; border: none !important; }
         #reader video { object-fit: cover !important; }
+
         .attivo-bg { background: linear-gradient(135deg, #16a34a 0%, #064e3b 100%) !important; }
         .inattivo-bg { background: linear-gradient(135deg, #dc2626 0%, #7f1d1d 100%) !important; }
         .already-bg { background: linear-gradient(135deg, #0277bd 0%, #01579b 100%) !important; }
@@ -45,12 +49,13 @@
         <section id="view-scan" class="space-y-4">
             <div class="flex justify-between items-center px-1">
                 <h3 class="text-xs font-bold text-slate-400 flex items-center gap-2 tracking-widest uppercase">
-                    <span class="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span> Entrées en direct
+                    <span class="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span> Aujourd'hui
                 </h3>
-                <span id="last-update" class="text-[10px] text-slate-600">Sync...</span>
+                <span id="last-update" class="text-[10px] text-slate-600 italic">Sync en cours...</span>
             </div>
+            
             <div id="passaggiList" class="space-y-3">
-                <p class="text-center text-slate-600 py-10 italic">Initialisation...</p>
+                <p class="text-center text-slate-600 py-10 italic">Initialisation de la liste...</p>
             </div>
         </section>
 
@@ -69,10 +74,12 @@
 
     <div id="full-scan-overlay">
         <div class="p-6 w-full flex justify-between items-center bg-slate-900/80 backdrop-blur-md">
-            <span class="font-bold text-blue-500 tracking-widest text-sm">SCANNER ACTIF</span>
+            <span class="font-bold text-blue-500 tracking-widest text-sm underline underline-offset-8 decoration-blue-500/30">SCANNER ACTIF</span>
             <button onclick="closeScanner()" class="bg-white/10 w-10 h-10 rounded-full flex items-center justify-center text-white text-2xl">&times;</button>
         </div>
+        
         <div id="reader"></div>
+
         <div id="scan-feedback" class="absolute inset-x-0 bottom-0 h-1/2 glass flex flex-col items-center justify-center text-center p-8 hidden animate-in slide-in-from-bottom duration-300">
             <p id="resName" class="text-3xl font-bold mb-2"></p>
             <p id="resStatus" class="text-sm uppercase tracking-widest mb-6"></p>
@@ -96,11 +103,12 @@
         let membersData = [];
         let html5QrCode = null;
         let isProcessing = false;
+        let lastDataLength = 0; // MÉMOIRE DU DASHBOARD
 
         window.onload = () => {
             loadMembers();
             loadPassaggi();
-            setInterval(loadPassaggi, 6000); // Rafraîchissement agressif (6 sec)
+            setInterval(loadPassaggi, 6000); // Polling toutes les 6s
         };
 
         function loadMembers() {
@@ -110,54 +118,48 @@
             }});
         }
 
+        // --- DASHBOARD AVEC SÉCURITÉ ANTI-DISPARITION ---
         function loadPassaggi() {
-    // 1. Force la fraîcheur des données (Cache-buster)
-    const freshPassaggiUrl = PASSAGGI_URL + '&t=' + new Date().getTime();
-    
-    Papa.parse(freshPassaggiUrl, { 
-        download: true, 
-        header: true, 
-        complete: (res) => {
-            const list = document.getElementById('passaggiList');
+            const freshUrl = PASSAGGI_URL + '&cache=' + Math.random();
             
-            // 2. Définir la date d'aujourd'hui au format Google Sheets (généralement JJ/MM/AAAA)
-            // Note: On utilise le format local pour correspondre à ce que le script écrit
-            const now = new Date();
-            const todayStr = now.toLocaleDateString('fr-FR'); 
+            Papa.parse(freshUrl, { download: true, header: true, complete: (res) => {
+                const list = document.getElementById('passaggiList');
+                const todayStr = new Date().toLocaleDateString('it-IT'); // Format DD/MM/YYYY
 
-            // 3. Filtrer les données
-            const dataToday = res.data.filter(p => {
-                // On vérifie que la ligne a un nom ET que la date correspond
-                // Dans ton script, la date est en 8ème position (Index 7)
-                // On va chercher la colonne qui contient la date.
+                // Filtrage strict : que les noms d'aujourd'hui
+                const dataToday = res.data.filter(p => {
+                    const rowValues = Object.values(p).join(' ');
+                    return (p.Nome || p.Codice_QR) && rowValues.includes(todayStr);
+                }).reverse();
+
+                // --- LOGIQUE ANTI-CACHE GOOGLE ---
+                // Si Google renvoie une version plus courte que ce qu'on a déjà affiché, 
+                // on ignore pour éviter la "disparition".
+                if (dataToday.length < lastDataLength) {
+                    console.log("Ignored: Google Cache serve old data");
+                    return; 
+                }
                 
-                // Si ton script enregistre la date via new Date(), 
-                // PapaParse la voit souvent dans une colonne nommée "Date" ou "Data" ou "Timestamp"
-                // On va chercher dans toutes les valeurs de la ligne si la date d'aujourd'hui s'y trouve
-                const rowValues = Object.values(p).join(' ');
-                return p.Nome && rowValues.includes(todayStr);
-            }).reverse(); // On met les plus récents en haut
+                lastDataLength = dataToday.length;
 
-            // 4. Affichage
-            if(dataToday.length > 0) {
-                list.innerHTML = dataToday.slice(0, 15).map(p => `
-                    <div class="glass p-4 rounded-2xl flex justify-between items-center border-l-4 border-blue-500 bg-white/5 shadow-sm animate-in fade-in slide-in-from-right duration-500">
-                        <div class="flex flex-col">
-                            <span class="font-bold text-white text-sm">${p.Nome}</span>
-                            <span class="text-[10px] text-slate-500 font-mono italic">${p.Heure || 'Passé'}</span>
+                if(dataToday.length > 0) {
+                    list.innerHTML = dataToday.slice(0, 15).map(p => `
+                        <div class="glass p-4 rounded-2xl flex justify-between items-center border-l-4 border-blue-500 bg-white/5 shadow-sm">
+                            <div class="flex flex-col">
+                                <span class="font-bold text-white text-sm">${p.Nome || 'Utilisateur'}</span>
+                                <span class="text-[10px] text-slate-500 font-mono italic">${p.Heure || 'Enregistré'}</span>
+                            </div>
+                            <span class="bg-blue-600 text-white text-[11px] px-3 py-1 rounded-lg font-black tracking-tighter">N° ${p.Numero_Passaggio || '?'}</span>
                         </div>
-                        <span class="bg-blue-600 text-white text-[11px] px-3 py-1 rounded-lg font-black tracking-tighter shadow-lg shadow-blue-500/20">N° ${p.Numero_Passaggio}</span>
-                    </div>
-                `).join('');
-            } else {
-                list.innerHTML = `<p class="text-center text-slate-600 py-10 italic">Aucun passage pour aujourd'hui (${todayStr})</p>`;
-            }
-            
-            document.getElementById('last-update').innerText = new Date().toLocaleTimeString();
+                    `).join('');
+                } else {
+                    list.innerHTML = `<p class="text-center text-slate-600 py-10 italic">Aucun passage aujourd'hui (${todayStr})</p>`;
+                }
+                document.getElementById('last-update').innerText = "Sync: " + new Date().toLocaleTimeString();
+            }});
         }
-    });
-}
 
+        // --- SCANNER ---
         function openScanner() {
             window.history.pushState({view: 'scanner'}, ""); 
             document.getElementById('full-scan-overlay').style.display = 'flex';
@@ -203,8 +205,7 @@
                             document.getElementById('resPassage').innerHTML = `<span class="text-xl">DÉJÀ PASSÉ</span><br>N° ${resData.num}`;
                         } else {
                             document.getElementById('resPassage').innerText = `N° ${resData.num}`;
-                            // Rechargement forcé après le scan réussi
-                            setTimeout(loadPassaggi, 1500);
+                            setTimeout(loadPassaggi, 1500); // Mise à jour forcée
                         }
                     } catch (e) { document.getElementById('resPassage').innerText = "OK"; }
                 } else {
@@ -233,6 +234,7 @@
             } catch(e){}
         }
 
+        // Navigation & Listes
         function switchTab(tab) {
             document.getElementById('view-scan').classList.toggle('hidden', tab !== 'scan');
             document.getElementById('view-list').classList.toggle('hidden', tab !== 'list');
@@ -249,7 +251,7 @@
                         <div class="w-10 h-10 rounded-full bg-blue-600/20 flex items-center justify-center font-bold text-blue-400 text-sm">${m.Nome[0]}</div>
                         <div class="flex flex-col">
                             <span class="font-bold text-sm text-white">${m.Nome} ${m.Cognome}</span>
-                            <span class="text-[10px] text-slate-500 uppercase font-medium tracking-tighter">${m.Codice_QR || '-'}</span>
+                            <span class="text-[10px] text-slate-500 font-medium tracking-tighter uppercase">${m.Codice_QR || '-'}</span>
                         </div>
                     </div>
                     <span class="status-badge ${m.Stato === 'ATTIVO' ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}">${m.Stato}</span>
@@ -285,5 +287,3 @@
     </script>
 </body>
 </html>
-
-
