@@ -81,7 +81,7 @@
         }
 
         async function onScanSuccess(decodedText) {
-            if (isProcessing) return; // Si on est déjà en train d'enregistrer, on ignore
+            if (isProcessing) return;
             isProcessing = true;
 
             const member = membersData.find(m => m.Codice_QR && m.Codice_QR.trim() === decodedText.trim());
@@ -89,47 +89,34 @@
             const passageDisplay = document.getElementById('passageDisplay');
             
             resultDiv.style.display = 'block';
-            passageDisplay.innerText = "Enregistrement en cours...";
+            passageDisplay.innerText = "Vérification...";
 
             if (member) {
-                const nome = member.Nome;
-                const cognome = member.Cognome;
                 const status = member.Stato ? member.Stato.toUpperCase() : "INCONNU";
-
-                document.getElementById('nameDisplay').innerText = nome + " " + cognome;
+                document.getElementById('nameDisplay').innerText = member.Nome + " " + member.Cognome;
                 document.getElementById('statusDisplay').innerText = status;
                 resultDiv.className = (status === "ATTIVO") ? 'attivo' : 'inattivo';
 
-                // --- ENVOI DES DONNÉES AU GOOGLE SCRIPT ---
-                try {
-                    // On utilise une URL temporaire pour contourner le mode 'no-cors' et lire la réponse
-                    const response = await fetch(SCRIPT_URL + "?qr=" + decodedText.trim(), {
-                        method: 'GET' // On passe en GET pour pouvoir lire le numéro en retour
-                    });
-                    
-                    const resData = await response.json();
-                    
-                    if (resData.result === "success") {
-                        document.getElementById('passageDisplay').innerHTML = "N° " + resData.num;
-                    } else {
-                        document.getElementById('passageDisplay').innerText = "Erreur: " + resData.message;
+                if (status === "ATTIVO") {
+                    try {
+                        const response = await fetch(SCRIPT_URL + "?qr=" + decodedText.trim());
+                        const resData = await response.json();
+                        if (resData.result === "success") {
+                            passageDisplay.innerHTML = "N° " + resData.num;
+                        }
+                    } catch (e) {
+                        passageDisplay.innerText = "Erreur réseau";
                     }
-                } catch (error) {
-                    console.error(error);
-                    // Si le GET échoue, on tente le POST par sécurité (mode dégradé)
-                    fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ qr: decodedText.trim() })});
-                    document.getElementById('passageDisplay').innerText = "✅ Enregistré";
+                } else {
+                    // Si INATTIVO
+                    passageDisplay.innerHTML = "🚫 ACCÈS REFUSÉ";
                 }
-
             } else {
                 resultDiv.className = '';
                 resultDiv.style.background = '#333';
-                document.getElementById('nameDisplay').innerText = "MEMBRE NON TROUVÉ";
-                document.getElementById('statusDisplay').innerText = "Code: " + decodedText;
+                document.getElementById('nameDisplay').innerText = "NON TROUVÉ";
                 passageDisplay.innerText = "";
             }
-
-            // Attendre 3 secondes avant de permettre un nouveau scan
             setTimeout(() => { isProcessing = false; }, 3000);
         }
 
@@ -137,4 +124,5 @@
     </script>
 </body>
 </html>
+
 
