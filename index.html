@@ -9,99 +9,101 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; background: #0f172a; color: #f8fafc; margin: 0; padding-bottom: 100px; }
+        body { font-family: 'Inter', sans-serif; background: #0f172a; color: #f8fafc; margin: 0; overflow-x: hidden; }
         .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); }
         .tab-active { border-bottom: 3px solid #3b82f6; color: #3b82f6; }
         .status-badge { padding: 2px 10px; border-radius: 9999px; font-size: 0.75rem; font-weight: bold; }
-        #reader { border-radius: 1.5rem; overflow: hidden; border: none !important; }
-        #reader video { border-radius: 1.5rem; }
+        
+        /* Bouton Flottant */
+        #fab-scan {
+            position: fixed; bottom: 30px; right: 30px; width: 70px; height: 70px;
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            z-index: 50; box-shadow: 0 10px 25px rgba(59, 130, 246, 0.5);
+        }
+
+        /* Vue Scan Plein Écran */
+        #full-scan-overlay {
+            position: fixed; inset: 0; background: #0f172a; z-index: 200;
+            display: none; flex-direction: column; align-items: center;
+        }
+
+        #reader { width: 100% !important; height: 60% !important; border: none !important; }
+        #reader video { object-fit: cover !important; }
+
         .attivo-bg { background: linear-gradient(135deg, #16a34a 0%, #064e3b 100%) !important; }
         .inattivo-bg { background: linear-gradient(135deg, #dc2626 0%, #7f1d1d 100%) !important; }
         .already-bg { background: linear-gradient(135deg, #0277bd 0%, #01579b 100%) !important; }
-        .passage-num { font-size: 3.5rem; font-weight: 900; color: #ffeb3b; text-shadow: 0 4px 10px rgba(0,0,0,0.3); }
-        
-        /* Bouton Flottant Fixe */
-        #startBtn {
-            position: fixed;
-            bottom: 25px;
-            right: 25px;
-            width: 65px;
-            height: 65px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 100;
-            box-shadow: 0 10px 25px rgba(59, 130, 246, 0.5);
-        }
+        .passage-num { font-size: 4rem; font-weight: 900; color: #ffeb3b; }
     </style>
 </head>
-<body>
+<body class="pb-24">
 
     <header class="p-6 text-center">
-        <div class="inline-flex items-center justify-center w-14 h-14 bg-blue-600 rounded-2xl shadow-lg shadow-blue-500/30 mb-3">
-            <span class="text-xl font-bold italic">U</span>
-        </div>
-        <h1 class="text-lg font-bold tracking-tight text-white">UNISP <span class="text-blue-500 font-light text-sm italic">PRO 2026</span></h1>
+        <h1 class="text-lg font-bold tracking-tight text-white">UNISP <span class="text-blue-500 font-light italic">DASHBOARD</span></h1>
     </header>
 
     <main class="max-w-md mx-auto px-4">
         <nav class="flex justify-around mb-6 border-b border-slate-800">
-            <button onclick="switchTab('scan')" id="tab-scan" class="pb-3 px-6 font-bold tab-active">SCANNER</button>
+            <button onclick="switchTab('scan')" id="tab-scan" class="pb-3 px-6 font-bold tab-active">PASSAGES</button>
             <button onclick="switchTab('list')" id="tab-list" class="pb-3 px-6 font-bold text-slate-500">MEMBRES</button>
         </nav>
 
         <section id="view-scan" class="space-y-4">
-            <div id="reader" class="shadow-2xl"></div>
-
-            <div id="result" class="glass p-8 rounded-3xl hidden text-center transition-all duration-500">
-                <p id="nameDisplay" class="text-2xl font-bold mb-1"></p>
-                <p id="statusDisplay" class="text-xs font-semibold tracking-widest uppercase opacity-70 mb-4"></p>
-                <div id="passageDisplay" class="passage-num"></div>
-            </div>
-
-            <div class="mt-8">
-                <h3 class="text-sm font-bold text-slate-400 mb-4 flex items-center gap-2">
-                    <span class="w-2 h-2 bg-yellow-500 rounded-full"></span> PASSAGES DU JOUR
+            <div class="flex justify-between items-center px-1">
+                <h3 class="text-sm font-bold text-slate-400 flex items-center gap-2">
+                    <span class="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span> DERNIÈRES ENTRÉES
                 </h3>
-                <div id="passaggiList" class="space-y-2">
-                    <p class="text-xs text-slate-600 italic">Chargement des entrées...</p>
-                </div>
+                <button onclick="loadPassaggi()" class="text-xs text-blue-500">Actualiser</button>
+            </div>
+            
+            <div id="passaggiList" class="space-y-3">
+                <p class="text-center text-slate-600 py-10 italic">Aucun passage détecté...</p>
             </div>
         </section>
 
         <section id="view-list" class="hidden space-y-4">
             <input type="text" id="searchInput" onkeyup="filterMembers()" placeholder="Rechercher par nom..." 
-                class="w-full bg-slate-800 border border-slate-700 rounded-xl px-5 py-4 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-inner text-white">
+                class="w-full bg-slate-800 border border-slate-700 rounded-xl px-5 py-4 text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
             <div id="membersList" class="space-y-3"></div>
         </section>
     </main>
 
-    <button id="startBtn" class="bg-blue-600 hover:bg-blue-500 transition-all active:scale-90">
+    <button id="fab-scan" onclick="openScanner()" class="bg-blue-600 active:scale-90 transition-transform">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
         </svg>
     </button>
 
-    <div id="memberModal" class="fixed inset-0 bg-black/90 hidden z-[110] flex items-center justify-center p-4 backdrop-blur-md">
-        <div class="glass w-full max-w-sm rounded-[2rem] overflow-hidden shadow-2xl border border-white/10">
-            <div class="p-6 border-b border-slate-700 flex justify-between items-center bg-white/5">
-                <h3 class="font-bold">Détails de l'adhérent</h3>
-                <button onclick="closeModal()" class="w-8 h-8 flex items-center justify-center rounded-full bg-white/10 text-xl">&times;</button>
-            </div>
-            <div id="modalContent" class="p-6 max-h-[60vh] overflow-y-auto space-y-4 text-sm leading-relaxed"></div>
-            <div class="p-4"><button onclick="closeModal()" class="w-full py-4 bg-blue-600 rounded-2xl font-bold shadow-lg shadow-blue-600/20">OK</button></div>
+    <div id="full-scan-overlay">
+        <div class="p-6 w-full flex justify-between items-center bg-slate-900/50">
+            <span class="font-bold text-blue-500">SCANNER QR</span>
+            <button onclick="closeScanner()" class="text-white text-2xl">&times;</button>
+        </div>
+        
+        <div id="reader"></div>
+
+        <div id="scan-feedback" class="absolute inset-x-0 bottom-0 h-1/2 glass flex-col items-center justify-center text-center p-8 hidden animate-in slide-in-from-bottom duration-300">
+            <p id="resName" class="text-3xl font-bold mb-2"></p>
+            <p id="resStatus" class="text-sm uppercase tracking-widest mb-6"></p>
+            <div id="resPassage" class="passage-num mb-8"></div>
+            <button onclick="closeScanner()" class="bg-white/10 px-8 py-3 rounded-full text-sm font-bold">RETOUR</button>
+        </div>
+    </div>
+
+    <div id="memberModal" class="fixed inset-0 bg-black/90 hidden z-[300] flex items-center justify-center p-4 backdrop-blur-md">
+        <div class="glass w-full max-w-sm rounded-[2rem] overflow-hidden border border-white/10">
+            <div id="modalContent" class="p-6 max-h-[70vh] overflow-y-auto space-y-4 text-sm leading-relaxed"></div>
+            <div class="p-4"><button onclick="closeModal()" class="w-full py-4 bg-blue-600 rounded-2xl font-bold">FERMER</button></div>
         </div>
     </div>
 
     <script>
-        // URLs
         const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSc3LZw98cFyqm2XGSEYYF3IOf5fHB3Pff8vLLlCD-VgvIicvX6jYWH-QDSbn5dZvpPhHjrXoIH4Hu9/pub?gid=0&single=true&output=csv';
-        // URL de la feuille PASSAGGI (assure-toi que gid=ID_DE_LA_FEUILLE est correct)
-        const PASSAGGI_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSc3LZw98cFyqm2XGSEYYF3IOf5fHB3Pff8vLLlCD-VgvIicvX6jYWH-QDSbn5dZvpPhHjrXoIH4Hu9/pub?gid=1558283585&single=true&output=csv'; 
+        const PASSAGGI_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSc3LZw98cFyqm2XGSEYYF3IOf5fHB3Pff8vLLlCD-VgvIicvX6jYWH-QDSbn5dZvpPhHjrXoIH4Hu9/pub?gid=1558283585&single=true&output=csv';
         const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwwDMSA_TrLhZkdup_V7GkzS_upZ_PenHKg_NTTyQB18JKppMYgNAm47xN-L68u1BrK/exec';
 
         let membersData = [];
+        let html5QrCode = null;
         let isProcessing = false;
 
         window.onload = () => {
@@ -110,90 +112,115 @@
         };
 
         function loadMembers() {
-            Papa.parse(CSV_URL, {
-                download: true, header: true,
-                complete: (results) => {
-                    membersData = results.data.filter(m => m.Nome);
-                    renderList(membersData);
-                }
-            });
+            Papa.parse(CSV_URL, { download: true, header: true, complete: (res) => { 
+                membersData = res.data.filter(m => m.Nome); 
+                renderList(membersData); 
+            }});
         }
 
-        // Charge et affiche les passages de la feuille PASSAGGI
         function loadPassaggi() {
-            Papa.parse(PASSAGGI_URL, {
-                download: true, header: true,
-                complete: (results) => {
-                    const list = document.getElementById('passaggiList');
-                    const data = results.data.reverse(); // Voir les derniers passages en premier
-                    list.innerHTML = data.slice(0, 10).map(p => p.Nome ? `
-                        <div class="glass p-3 rounded-xl flex justify-between items-center border-l-4 border-yellow-500 bg-white/5">
-                            <span class="font-bold text-sm">${p.Nome}</span>
-                            <span class="bg-yellow-500/20 text-yellow-500 text-xs px-2 py-1 rounded-md font-mono">N° ${p.Numero_Passaggio}</span>
+            Papa.parse(PASSAGGI_URL, { download: true, header: true, complete: (res) => {
+                const list = document.getElementById('passaggiList');
+                const data = res.data.filter(p => p.Nome).reverse();
+                list.innerHTML = data.slice(0, 15).map(p => `
+                    <div class="glass p-4 rounded-2xl flex justify-between items-center border-l-4 border-blue-500 bg-white/5 shadow-sm">
+                        <div class="flex flex-col">
+                            <span class="font-bold text-white">${p.Nome}</span>
+                            <span class="text-[10px] text-slate-500 uppercase">${p.Heure || ''}</span>
                         </div>
-                    ` : '').join('');
-                }
-            });
+                        <span class="bg-blue-500 text-white text-xs px-3 py-1 rounded-lg font-black">N° ${p.Numero_Passaggio}</span>
+                    </div>
+                `).join('');
+            }});
         }
 
-        function switchTab(tab) {
-            document.getElementById('view-scan').classList.toggle('hidden', tab !== 'scan');
-            document.getElementById('view-list').classList.toggle('hidden', tab !== 'list');
-            document.getElementById('tab-scan').className = tab === 'scan' ? 'pb-3 px-6 font-bold tab-active text-blue-400' : 'pb-3 px-6 font-bold text-slate-500';
-            document.getElementById('tab-list').className = tab === 'list' ? 'pb-3 px-6 font-bold tab-active text-blue-400' : 'pb-3 px-6 font-bold text-slate-500';
-            if(tab === 'scan') loadPassaggi();
+        function openScanner() {
+            document.getElementById('full-scan-overlay').style.display = 'flex';
+            document.getElementById('scan-feedback').classList.add('hidden');
+            html5QrCode = new Html5Qrcode("reader");
+            html5QrCode.start({ facingMode: "environment" }, { fps: 15, qrbox: 280 }, onScanSuccess);
         }
 
-        document.getElementById('startBtn').addEventListener('click', function() {
-            const html5QrCode = new Html5Qrcode("reader");
-            html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, onScanSuccess);
-        });
+        function closeScanner() {
+            if (html5QrCode) {
+                html5QrCode.stop().then(() => {
+                    document.getElementById('full-scan-overlay').style.display = 'none';
+                    loadPassaggi(); // Rafraîchit le dashboard au retour
+                });
+            } else {
+                document.getElementById('full-scan-overlay').style.display = 'none';
+            }
+        }
 
         async function onScanSuccess(decodedText) {
             if (isProcessing) return;
             isProcessing = true;
 
             const member = membersData.find(m => m.Codice_QR && m.Codice_QR.trim() === decodedText.trim());
-            const resDiv = document.getElementById('result');
-            const passDisp = document.getElementById('passageDisplay');
-            resDiv.classList.remove('hidden');
+            const feedback = document.getElementById('scan-feedback');
+            feedback.classList.remove('hidden');
 
             if (member) {
+                playFeedback(); // Fonction bip/vibration
                 const status = member.Stato ? member.Stato.toUpperCase() : "INCONNU";
-                document.getElementById('nameDisplay').innerText = `${member.Nome} ${member.Cognome}`;
-                document.getElementById('statusDisplay').innerText = status;
+                document.getElementById('resName').innerText = `${member.Nome} ${member.Cognome}`;
+                document.getElementById('resStatus').innerText = status;
                 
                 if (status === "ATTIVO") {
-                    resDiv.className = 'glass p-8 rounded-3xl text-center attivo-bg';
-                    passDisp.innerText = "...";
+                    feedback.className = "absolute inset-x-0 bottom-0 h-1/2 glass flex flex-col items-center justify-center text-center p-8 attivo-bg";
+                    document.getElementById('resPassage').innerText = "...";
                     try {
                         const response = await fetch(`${SCRIPT_URL}?qr=${decodedText.trim()}`);
                         const resData = await response.json();
                         if (resData.result === "already_scanned") {
-                            resDiv.classList.add('already-bg');
-                            passDisp.innerHTML = `<span class="text-xl">DÉJÀ PASSÉ</span><br>N° ${resData.num}`;
+                            feedback.classList.add('already-bg');
+                            document.getElementById('resPassage').innerHTML = `<span class="text-xl">DÉJÀ PASSÉ</span><br>N° ${resData.num}`;
                         } else {
-                            passDisp.innerHTML = `N° ${resData.num}`;
+                            document.getElementById('resPassage').innerText = `N° ${resData.num}`;
                         }
-                        loadPassaggi(); // Actualise la liste après scan réussi
-                    } catch (e) { passDisp.innerText = "OK"; }
+                    } catch (e) { document.getElementById('resPassage').innerText = "OK"; }
                 } else {
-                    resDiv.className = 'glass p-8 rounded-3xl text-center inattivo-bg';
-                    passDisp.innerHTML = "🚫 REFUSÉ";
+                    feedback.className = "absolute inset-x-0 bottom-0 h-1/2 glass flex flex-col items-center justify-center text-center p-8 inattivo-bg";
+                    document.getElementById('resPassage').innerText = "ACCÈS REFUSÉ";
                 }
+            } else {
+                document.getElementById('resName').innerText = "INCONNU";
+                document.getElementById('resPassage').innerText = "NON TROUVÉ";
             }
-            setTimeout(() => { isProcessing = false; }, 3000);
+            
+            // Fermeture automatique après 4 secondes
+            setTimeout(() => { 
+                isProcessing = false; 
+                closeScanner();
+            }, 4000);
+        }
+
+        function playFeedback() {
+            if (navigator.vibrate) navigator.vibrate(100);
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.start(); gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.5);
+        }
+
+        function switchTab(tab) {
+            document.getElementById('view-scan').classList.toggle('hidden', tab !== 'scan');
+            document.getElementById('view-list').classList.toggle('hidden', tab !== 'list');
+            document.getElementById('tab-scan').className = tab === 'scan' ? 'pb-3 px-6 font-bold tab-active' : 'pb-3 px-6 font-bold text-slate-500';
+            document.getElementById('tab-list').className = tab === 'list' ? 'pb-3 px-6 font-bold tab-active' : 'pb-3 px-6 font-bold text-slate-500';
+            if(tab === 'scan') loadPassaggi();
         }
 
         function renderList(data) {
             const list = document.getElementById('membersList');
             list.innerHTML = data.map((m, idx) => `
-                <div onclick="showDetails(${idx})" class="glass p-4 rounded-2xl flex justify-between items-center active:bg-slate-700 transition-all">
+                <div onclick="showDetails(${idx})" class="glass p-4 rounded-2xl flex justify-between items-center active:bg-slate-700">
                     <div class="flex items-center gap-3">
                         <div class="w-10 h-10 rounded-full bg-blue-600/20 flex items-center justify-center font-bold text-blue-400">${m.Nome[0]}</div>
-                        <div>
-                            <p class="font-bold text-sm text-white">${m.Nome} ${m.Cognome}</p>
-                            <p class="text-[10px] text-slate-500 uppercase">${m.Codice_QR || '-'}</p>
+                        <div class="flex flex-col">
+                            <span class="font-bold text-sm">${m.Nome} ${m.Cognome}</span>
+                            <span class="text-[10px] text-slate-500">${m.Codice_QR || '-'}</span>
                         </div>
                     </div>
                     <span class="status-badge ${m.Stato === 'ATTIVO' ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}">${m.Stato}</span>
@@ -215,7 +242,7 @@
                     <p class="text-slate-100 font-medium">${value || '-'}</p>
                 </div>
             `).join('');
-            document.getElementById('modalContent').innerHTML = content;
+            document.getElementById('modalContent').innerHTML = `<h2 class="text-lg font-bold mb-4 text-blue-400 border-b border-white/10 pb-2">${m.Nome} ${m.Cognome}</h2>` + content;
             document.getElementById('memberModal').classList.remove('hidden');
         }
 
