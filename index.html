@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>UNISP SYSTEM</title>
+    <title>UNISP SYSTEM PRO</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
@@ -14,14 +14,12 @@
         .tab-active { border-bottom: 3px solid #3b82f6; color: #3b82f6; }
         .status-badge { padding: 2px 10px; border-radius: 9999px; font-size: 0.75rem; font-weight: bold; }
         
-        /* Bouton Flottant */
         #fab-scan {
             position: fixed; bottom: 30px; right: 30px; width: 70px; height: 70px;
             border-radius: 50%; display: flex; align-items: center; justify-content: center;
             z-index: 50; box-shadow: 0 10px 25px rgba(59, 130, 246, 0.5);
         }
 
-        /* Vue Scan Plein Écran */
         #full-scan-overlay {
             position: fixed; inset: 0; background: #0f172a; z-index: 200;
             display: none; flex-direction: column; align-items: center;
@@ -33,13 +31,13 @@
         .attivo-bg { background: linear-gradient(135deg, #16a34a 0%, #064e3b 100%) !important; }
         .inattivo-bg { background: linear-gradient(135deg, #dc2626 0%, #7f1d1d 100%) !important; }
         .already-bg { background: linear-gradient(135deg, #0277bd 0%, #01579b 100%) !important; }
-        .passage-num { font-size: 4rem; font-weight: 900; color: #ffeb3b; }
+        .passage-num { font-size: 4rem; font-weight: 900; color: #ffeb3b; line-height: 1; }
     </style>
 </head>
 <body class="pb-24">
 
     <header class="p-6 text-center">
-        <h1 class="text-lg font-bold tracking-tight text-white">UNISP <span class="text-blue-500 font-light italic">DASHBOARD</span></h1>
+        <h1 class="text-lg font-bold tracking-tight text-white italic">UNISP <span class="text-blue-500 font-light uppercase not-italic text-sm">PRO Dashboard</span></h1>
     </header>
 
     <main class="max-w-md mx-auto px-4">
@@ -50,55 +48,53 @@
 
         <section id="view-scan" class="space-y-4">
             <div class="flex justify-between items-center px-1">
-                <h3 class="text-sm font-bold text-slate-400 flex items-center gap-2">
-                    <span class="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span> DERNIÈRES ENTRÉES
+                <h3 class="text-xs font-bold text-slate-400 flex items-center gap-2 tracking-widest uppercase">
+                    <span class="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span> Entrées en direct
                 </h3>
-                <button onclick="loadPassaggi()" class="text-xs text-blue-500">Actualiser</button>
+                <span id="last-update" class="text-[10px] text-slate-600">Sync...</span>
             </div>
-            
             <div id="passaggiList" class="space-y-3">
-                <p class="text-center text-slate-600 py-10 italic">Aucun passage détecté...</p>
+                <p class="text-center text-slate-600 py-10 italic">Initialisation...</p>
             </div>
         </section>
 
         <section id="view-list" class="hidden space-y-4">
             <input type="text" id="searchInput" onkeyup="filterMembers()" placeholder="Rechercher par nom..." 
-                class="w-full bg-slate-800 border border-slate-700 rounded-xl px-5 py-4 text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                class="w-full bg-slate-800 border border-slate-700 rounded-xl px-5 py-4 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-xl">
             <div id="membersList" class="space-y-3"></div>
         </section>
     </main>
 
     <button id="fab-scan" onclick="openScanner()" class="bg-blue-600 active:scale-90 transition-transform">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-9 w-9 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
         </svg>
     </button>
 
     <div id="full-scan-overlay">
-        <div class="p-6 w-full flex justify-between items-center bg-slate-900/50">
-            <span class="font-bold text-blue-500">SCANNER QR</span>
-            <button onclick="closeScanner()" class="text-white text-2xl">&times;</button>
+        <div class="p-6 w-full flex justify-between items-center bg-slate-900/80 backdrop-blur-md">
+            <span class="font-bold text-blue-500 tracking-widest">SCANNER ACTIF</span>
+            <button onclick="closeScanner()" class="bg-white/10 w-10 h-10 rounded-full flex items-center justify-center text-white text-2xl">&times;</button>
         </div>
-        
         <div id="reader"></div>
-
-        <div id="scan-feedback" class="absolute inset-x-0 bottom-0 h-1/2 glass flex-col items-center justify-center text-center p-8 hidden animate-in slide-in-from-bottom duration-300">
+        <div id="scan-feedback" class="absolute inset-x-0 bottom-0 h-1/2 glass flex flex-col items-center justify-center text-center p-8 hidden animate-in slide-in-from-bottom duration-300">
             <p id="resName" class="text-3xl font-bold mb-2"></p>
             <p id="resStatus" class="text-sm uppercase tracking-widest mb-6"></p>
             <div id="resPassage" class="passage-num mb-8"></div>
-            <button onclick="closeScanner()" class="bg-white/10 px-8 py-3 rounded-full text-sm font-bold">RETOUR</button>
+            <button onclick="document.getElementById('scan-feedback').classList.add('hidden')" class="bg-white/20 px-10 py-3 rounded-full text-xs font-bold uppercase tracking-widest">Suivant</button>
         </div>
     </div>
 
     <div id="memberModal" class="fixed inset-0 bg-black/90 hidden z-[300] flex items-center justify-center p-4 backdrop-blur-md">
-        <div class="glass w-full max-w-sm rounded-[2rem] overflow-hidden border border-white/10">
-            <div id="modalContent" class="p-6 max-h-[70vh] overflow-y-auto space-y-4 text-sm leading-relaxed"></div>
-            <div class="p-4"><button onclick="closeModal()" class="w-full py-4 bg-blue-600 rounded-2xl font-bold">FERMER</button></div>
+        <div class="glass w-full max-w-sm rounded-[2.5rem] overflow-hidden border border-white/10 shadow-2xl">
+            <div id="modalContent" class="p-8 max-h-[70vh] overflow-y-auto space-y-4 text-sm leading-relaxed"></div>
+            <div class="p-6"><button onclick="closeModal()" class="w-full py-4 bg-blue-600 rounded-2xl font-bold shadow-lg">FERMER</button></div>
         </div>
     </div>
 
     <script>
         const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSc3LZw98cFyqm2XGSEYYF3IOf5fHB3Pff8vLLlCD-VgvIicvX6jYWH-QDSbn5dZvpPhHjrXoIH4Hu9/pub?gid=0&single=true&output=csv';
+        // ID PASSAGGI CORRIGÉ : 1558283585
         const PASSAGGI_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSc3LZw98cFyqm2XGSEYYF3IOf5fHB3Pff8vLLlCD-VgvIicvX6jYWH-QDSbn5dZvpPhHjrXoIH4Hu9/pub?gid=1558283585&single=true&output=csv';
         const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwwDMSA_TrLhZkdup_V7GkzS_upZ_PenHKg_NTTyQB18JKppMYgNAm47xN-L68u1BrK/exec';
 
@@ -109,6 +105,7 @@
         window.onload = () => {
             loadMembers();
             loadPassaggi();
+            setInterval(loadPassaggi, 8000);
         };
 
         function loadMembers() {
@@ -121,24 +118,40 @@
         function loadPassaggi() {
             Papa.parse(PASSAGGI_URL, { download: true, header: true, complete: (res) => {
                 const list = document.getElementById('passaggiList');
-                const data = res.data.filter(p => p.Nome).reverse();
-                list.innerHTML = data.slice(0, 15).map(p => `
-                    <div class="glass p-4 rounded-2xl flex justify-between items-center border-l-4 border-blue-500 bg-white/5 shadow-sm">
-                        <div class="flex flex-col">
-                            <span class="font-bold text-white">${p.Nome}</span>
-                            <span class="text-[10px] text-slate-500 uppercase">${p.Heure || ''}</span>
+                const data = res.data.filter(p => p.Nome || p.Codice_QR).reverse();
+                if(data.length > 0) {
+                    list.innerHTML = data.slice(0, 15).map(p => `
+                        <div class="glass p-4 rounded-2xl flex justify-between items-center border-l-4 border-blue-500 bg-white/5 shadow-sm animate-in fade-in slide-in-from-right duration-500">
+                            <div class="flex flex-col">
+                                <span class="font-bold text-white text-sm">${p.Nome || 'Utilisateur'}</span>
+                                <span class="text-[10px] text-slate-500 font-mono italic">${p.Heure || 'Enregistré'}</span>
+                            </div>
+                            <span class="bg-blue-600 text-white text-[11px] px-3 py-1 rounded-lg font-black tracking-tighter shadow-lg shadow-blue-500/20">N° ${p.Numero_Passaggio || '?'}</span>
                         </div>
-                        <span class="bg-blue-500 text-white text-xs px-3 py-1 rounded-lg font-black">N° ${p.Numero_Passaggio}</span>
-                    </div>
-                `).join('');
+                    `).join('');
+                }
+                document.getElementById('last-update').innerText = new Date().toLocaleTimeString();
             }});
         }
 
         function openScanner() {
+            window.history.pushState({view: 'scanner'}, ""); 
             document.getElementById('full-scan-overlay').style.display = 'flex';
             document.getElementById('scan-feedback').classList.add('hidden');
             html5QrCode = new Html5Qrcode("reader");
             html5QrCode.start({ facingMode: "environment" }, { fps: 15, qrbox: 280 }, onScanSuccess);
+        }
+
+        function closeScanner() {
+            isProcessing = false;
+            if (html5QrCode) {
+                html5QrCode.stop().then(() => {
+                    document.getElementById('full-scan-overlay').style.display = 'none';
+                    loadPassaggi();
+                }).catch(() => { document.getElementById('full-scan-overlay').style.display = 'none'; });
+            } else {
+                document.getElementById('full-scan-overlay').style.display = 'none';
+            }
         }
 
         async function onScanSuccess(decodedText) {
@@ -158,87 +171,60 @@
                 if (status === "ATTIVO") {
                     feedback.className = "absolute inset-x-0 bottom-0 h-1/2 glass flex flex-col items-center justify-center text-center p-8 attivo-bg";
                     document.getElementById('resPassage').innerText = "...";
-                    
                     try {
                         const response = await fetch(`${SCRIPT_URL}?qr=${decodedText.trim()}`);
                         const resData = await response.json();
-                        
                         if (resData.result === "already_scanned") {
-                            // CAS BLEU : On reste bloqué ici pour que Marco voit l'alerte
                             feedback.className = "absolute inset-x-0 bottom-0 h-1/2 glass flex flex-col items-center justify-center text-center p-8 already-bg";
                             document.getElementById('resPassage').innerHTML = `<span class="text-xl">DÉJÀ PASSÉ</span><br>N° ${resData.num}`;
-                            isProcessing = false; // On permet de cliquer sur Retour
-                            return; // STOP ICI, pas de fermeture auto
                         } else {
-                            // CAS VERT : Succès
                             document.getElementById('resPassage').innerText = `N° ${resData.num}`;
-                            // Fermeture automatique UNIQUEMENT en cas de succès vert
-                            setTimeout(() => { 
-                                isProcessing = false; 
-                                closeScanner();
-                            }, 3000);
+                            setTimeout(loadPassaggi, 1500);
                         }
-                    } catch (e) { 
-                        document.getElementById('resPassage').innerText = "SYNCHRO OK";
-                        setTimeout(() => { isProcessing = false; closeScanner(); }, 2000);
-                    }
+                    } catch (e) { document.getElementById('resPassage').innerText = "OK"; }
                 } else {
-                    // CAS ROUGE : On reste bloqué ici
                     feedback.className = "absolute inset-x-0 bottom-0 h-1/2 glass flex flex-col items-center justify-center text-center p-8 inattivo-bg";
                     document.getElementById('resPassage').innerText = "🚫 ACCÈS REFUSÉ";
-                    isProcessing = false; 
-                    return; // STOP ICI, pas de fermeture auto
                 }
             } else {
-                // CAS MEMBRE INCONNU
+                feedback.className = "absolute inset-x-0 bottom-0 h-1/2 glass flex flex-col items-center justify-center text-center p-8 bg-slate-800";
                 document.getElementById('resName').innerText = "INCONNU";
                 document.getElementById('resPassage').innerText = "NON TROUVÉ";
-                isProcessing = false;
             }
-        }
-
-        function closeScanner() {
-            // Réinitialise l'état de traitement pour le prochain scan
-            isProcessing = false; 
-            if (html5QrCode) {
-                html5QrCode.stop().then(() => {
-                    document.getElementById('full-scan-overlay').style.display = 'none';
-                    // Petit délai avant de recharger pour laisser le temps à Google de publier le CSV
-                    setTimeout(loadPassaggi, 1000); 
-                }).catch(() => {
-                    document.getElementById('full-scan-overlay').style.display = 'none';
-                });
-            } else {
-                document.getElementById('full-scan-overlay').style.display = 'none';
-            }
+            setTimeout(() => { feedback.classList.add('hidden'); isProcessing = false; }, 3000);
         }
 
         function playFeedback() {
             if (navigator.vibrate) navigator.vibrate(100);
-            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.connect(gain); gain.connect(audioCtx.destination);
-            osc.start(); gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.5);
+            try {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.frequency.value = 880;
+                osc.start(); 
+                gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.2);
+                osc.stop(audioCtx.currentTime + 0.2);
+            } catch(e){}
         }
 
         function switchTab(tab) {
             document.getElementById('view-scan').classList.toggle('hidden', tab !== 'scan');
             document.getElementById('view-list').classList.toggle('hidden', tab !== 'list');
-            document.getElementById('tab-scan').className = tab === 'scan' ? 'pb-3 px-6 font-bold tab-active' : 'pb-3 px-6 font-bold text-slate-500';
-            document.getElementById('tab-list').className = tab === 'list' ? 'pb-3 px-6 font-bold tab-active' : 'pb-3 px-6 font-bold text-slate-500';
+            document.getElementById('tab-scan').className = tab === 'scan' ? 'pb-3 px-6 font-bold tab-active text-blue-400' : 'pb-3 px-6 font-bold text-slate-500';
+            document.getElementById('tab-list').className = tab === 'list' ? 'pb-3 px-6 font-bold tab-active text-blue-400' : 'pb-3 px-6 font-bold text-slate-500';
             if(tab === 'scan') loadPassaggi();
         }
 
         function renderList(data) {
             const list = document.getElementById('membersList');
             list.innerHTML = data.map((m, idx) => `
-                <div onclick="showDetails(${idx})" class="glass p-4 rounded-2xl flex justify-between items-center active:bg-slate-700">
+                <div onclick="showDetails(${idx})" class="glass p-4 rounded-2xl flex justify-between items-center active:bg-slate-700 transition-all shadow-sm">
                     <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-full bg-blue-600/20 flex items-center justify-center font-bold text-blue-400">${m.Nome[0]}</div>
+                        <div class="w-10 h-10 rounded-full bg-blue-600/20 flex items-center justify-center font-bold text-blue-400 text-sm">${m.Nome[0]}</div>
                         <div class="flex flex-col">
-                            <span class="font-bold text-sm">${m.Nome} ${m.Cognome}</span>
-                            <span class="text-[10px] text-slate-500">${m.Codice_QR || '-'}</span>
+                            <span class="font-bold text-sm text-white">${m.Nome} ${m.Cognome}</span>
+                            <span class="text-[10px] text-slate-500 uppercase font-medium tracking-tighter">${m.Codice_QR || '-'}</span>
                         </div>
                     </div>
                     <span class="status-badge ${m.Stato === 'ATTIVO' ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}">${m.Stato}</span>
@@ -255,17 +241,22 @@
         function showDetails(idx) {
             const m = membersData[idx];
             const content = Object.entries(m).map(([key, value]) => `
-                <div class="bg-white/5 p-3 rounded-xl border border-white/5">
-                    <p class="text-[9px] uppercase text-slate-500 font-bold mb-1">${key.replace(/_/g, ' ')}</p>
+                <div class="bg-white/5 p-4 rounded-2xl border border-white/5">
+                    <p class="text-[9px] uppercase text-slate-500 font-bold mb-1 tracking-widest">${key.replace(/_/g, ' ')}</p>
                     <p class="text-slate-100 font-medium">${value || '-'}</p>
                 </div>
             `).join('');
-            document.getElementById('modalContent').innerHTML = `<h2 class="text-lg font-bold mb-4 text-blue-400 border-b border-white/10 pb-2">${m.Nome} ${m.Cognome}</h2>` + content;
+            document.getElementById('modalContent').innerHTML = `<h2 class="text-xl font-bold mb-6 text-blue-400 border-b border-white/10 pb-4">${m.Nome} ${m.Cognome}</h2>` + content;
             document.getElementById('memberModal').classList.remove('hidden');
         }
 
         function closeModal() { document.getElementById('memberModal').classList.add('hidden'); }
+
+        window.onpopstate = function() {
+            if (document.getElementById('full-scan-overlay').style.display === 'flex') {
+                closeScanner();
+            }
+        };
     </script>
 </body>
 </html>
-
