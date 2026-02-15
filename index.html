@@ -111,26 +111,52 @@
         }
 
         function loadPassaggi() {
-            // AJOUT DU CACHE-BUSTER ICI
-            const freshPassaggiUrl = PASSAGGI_URL + '&t=' + new Date().getTime();
+    // 1. Force la fraîcheur des données (Cache-buster)
+    const freshPassaggiUrl = PASSAGGI_URL + '&t=' + new Date().getTime();
+    
+    Papa.parse(freshPassaggiUrl, { 
+        download: true, 
+        header: true, 
+        complete: (res) => {
+            const list = document.getElementById('passaggiList');
             
-            Papa.parse(freshPassaggiUrl, { download: true, header: true, complete: (res) => {
-                const list = document.getElementById('passaggiList');
-                const data = res.data.filter(p => p.Nome || p.Codice_QR).reverse();
-                if(data.length > 0) {
-                    list.innerHTML = data.slice(0, 15).map(p => `
-                        <div class="glass p-4 rounded-2xl flex justify-between items-center border-l-4 border-blue-500 bg-white/5 shadow-sm animate-in fade-in slide-in-from-right duration-500">
-                            <div class="flex flex-col">
-                                <span class="font-bold text-white text-sm">${p.Nome || 'Utilisateur'}</span>
-                                <span class="text-[10px] text-slate-500 font-mono italic">${p.Heure || 'Enregistré'}</span>
-                            </div>
-                            <span class="bg-blue-600 text-white text-[11px] px-3 py-1 rounded-lg font-black tracking-tighter shadow-lg shadow-blue-500/20">N° ${p.Numero_Passaggio || '?'}</span>
+            // 2. Définir la date d'aujourd'hui au format Google Sheets (généralement JJ/MM/AAAA)
+            // Note: On utilise le format local pour correspondre à ce que le script écrit
+            const now = new Date();
+            const todayStr = now.toLocaleDateString('fr-FR'); 
+
+            // 3. Filtrer les données
+            const dataToday = res.data.filter(p => {
+                // On vérifie que la ligne a un nom ET que la date correspond
+                // Dans ton script, la date est en 8ème position (Index 7)
+                // On va chercher la colonne qui contient la date.
+                
+                // Si ton script enregistre la date via new Date(), 
+                // PapaParse la voit souvent dans une colonne nommée "Date" ou "Data" ou "Timestamp"
+                // On va chercher dans toutes les valeurs de la ligne si la date d'aujourd'hui s'y trouve
+                const rowValues = Object.values(p).join(' ');
+                return p.Nome && rowValues.includes(todayStr);
+            }).reverse(); // On met les plus récents en haut
+
+            // 4. Affichage
+            if(dataToday.length > 0) {
+                list.innerHTML = dataToday.slice(0, 15).map(p => `
+                    <div class="glass p-4 rounded-2xl flex justify-between items-center border-l-4 border-blue-500 bg-white/5 shadow-sm animate-in fade-in slide-in-from-right duration-500">
+                        <div class="flex flex-col">
+                            <span class="font-bold text-white text-sm">${p.Nome}</span>
+                            <span class="text-[10px] text-slate-500 font-mono italic">${p.Heure || 'Passé'}</span>
                         </div>
-                    `).join('');
-                }
-                document.getElementById('last-update').innerText = new Date().toLocaleTimeString();
-            }});
+                        <span class="bg-blue-600 text-white text-[11px] px-3 py-1 rounded-lg font-black tracking-tighter shadow-lg shadow-blue-500/20">N° ${p.Numero_Passaggio}</span>
+                    </div>
+                `).join('');
+            } else {
+                list.innerHTML = `<p class="text-center text-slate-600 py-10 italic">Aucun passage pour aujourd'hui (${todayStr})</p>`;
+            }
+            
+            document.getElementById('last-update').innerText = new Date().toLocaleTimeString();
         }
+    });
+}
 
         function openScanner() {
             window.history.pushState({view: 'scanner'}, ""); 
@@ -259,4 +285,5 @@
     </script>
 </body>
 </html>
+
 
