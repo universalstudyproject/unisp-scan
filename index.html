@@ -21,9 +21,13 @@
 </head>
 <body>
 
-    <h1>UNISP-SCAN</h1>
+    <h1>SCANNER DE CONTRÔLE 2026</h1>
     <div id="loading">Chargement de la base de données...</div>
     
+    <button id="startBtn" style="padding: 15px; font-size: 18px; margin-bottom: 20px; border-radius: 10px; cursor: pointer; display:none;">
+        📷 CLIQUEZ ICI POUR SCANNER
+    </button>
+
     <div id="reader"></div>
 
     <div id="result">
@@ -32,59 +36,56 @@
     </div>
 
     <script>
-        // --- CONFIGURATION ---
-        // REMPLACEZ LE LIEN CI-DESSOUS PAR VOTRE LIEN CSV PUBLIÉ SUR LE WEB
-        const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSc3LZw98cFyqm2XGSEYYF3IOf5fHB3Pff8vLLlCD-VgvIicvX6jYWH-QDSbn5dZvpPhHjrXoIH4Hu9/pub?gid=0&single=true&output=csv'; 
-        
+        const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSc3LZw98cFyqm2XGSEYYF3IOf5fHB3Pff8vLLlCD-VgvIicvX6jYWH-QDSbn5dZvpPhHjrXoIH4Hu9/pub?gid=0&single=true&output=csv'; // Remettez bien votre lien ici
         let membersData = [];
 
-        // 1. Charger les données depuis Google Sheets
         function loadDatabase() {
             Papa.parse(CSV_URL, {
                 download: true,
                 header: true,
                 complete: function(results) {
                     membersData = results.data;
-                    document.getElementById('loading').innerText = "✅ Base de données prête (" + membersData.length + " membres)";
-                    startScanner();
+                    document.getElementById('loading').innerText = "✅ " + membersData.length + " membres chargés";
+                    document.getElementById('startBtn').style.display = 'inline-block';
                 }
             });
         }
 
-        // 2. Lancer le scanner de caméra
+        // On lance le scanner uniquement quand on clique sur le bouton
+        document.getElementById('startBtn').addEventListener('click', function() {
+            this.style.display = 'none'; // Cache le bouton après clic
+            startScanner();
+        });
+
         function startScanner() {
-            const html5QrCode = new html5QrCode("reader");
-            html5QrCode.start(
-                { facingMode: "environment" }, 
-                { fps: 10, qrbox: { width: 250, height: 250 } },
-                onScanSuccess
-            );
+            const html5QrCode = new Html5Qrcode("reader");
+            const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+            
+            html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess)
+            .catch(err => {
+                alert("Erreur caméra : " + err);
+            });
         }
 
-        // 3. Action quand un QR est détecté
         function onScanSuccess(decodedText) {
-            // Chercher le membre dans la colonne 'Codice_QR'
-            const member = membersData.find(m => m.Codice_QR.trim() === decodedText.trim());
+            const member = membersData.find(m => m.Codice_QR && m.Codice_QR.trim() === decodedText.trim());
             const resultDiv = document.getElementById('result');
-            
             resultDiv.style.display = 'block';
 
             if (member) {
                 document.getElementById('nameDisplay').innerText = member.Nome + " " + member.Cognome;
-                const status = member.Stato.toUpperCase();
+                const status = member.Stato ? member.Stato.toUpperCase() : "INCONNU";
                 document.getElementById('statusDisplay').innerText = status;
 
                 if (status === "ATTIVO") {
                     resultDiv.className = 'attivo';
                 } else {
                     resultDiv.className = 'inattivo';
-                    // Alerte sonore pour Inactif (optionnel)
-                    window.navigator.vibrate(500);
                 }
             } else {
                 resultDiv.className = '';
                 resultDiv.style.background = '#333';
-                document.getElementById('nameDisplay').innerText = "INCONNU";
+                document.getElementById('nameDisplay').innerText = "MEMBRE NON TROUVÉ";
                 document.getElementById('statusDisplay').innerText = "Code: " + decodedText;
             }
         }
@@ -92,4 +93,5 @@
         window.onload = loadDatabase;
     </script>
 </body>
+
 </html>
