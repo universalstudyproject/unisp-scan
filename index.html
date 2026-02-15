@@ -91,6 +91,7 @@
                 complete: (results) => {
                     membersData = results.data.filter(m => m.Nome);
                     // document.getElementById('loading').innerText = `${membersData.length} membres synchronisés`;
+                    document.getElementById('loading').innerText = ``;
                     document.getElementById('startBtn').style.display = 'block';
                     renderList(membersData);
                 }
@@ -193,5 +194,6 @@
     </script>
 </body>
 </html>
+
 
 
