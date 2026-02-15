@@ -15,7 +15,16 @@
         h1 { color: #fff; font-size: 1.5rem; }
         .member-name { font-size: 2rem; font-weight: bold; margin-bottom: 10px; }
         .status-text { font-size: 1.5rem; text-transform: uppercase; letter-spacing: 2px; }
-        .passage-info { margin-top: 10px; font-style: italic; color: #ffeb3b; }
+        .passage-info { 
+            margin-top: 15px; 
+            font-size: 3rem; /* Très gros */
+            font-weight: 900; 
+            color: #ffeb3b; 
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            background: rgba(0,0,0,0.2);
+            border-radius: 10px;
+            padding: 10px;
+        }
         @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
         #loading { color: #888; margin-bottom: 10px; }
         #startBtn { padding: 15px; font-size: 18px; margin-bottom: 20px; border-radius: 10px; cursor: pointer; background: #2196f3; color: white; border: none; }
@@ -93,19 +102,23 @@
 
                 // --- ENVOI DES DONNÉES AU GOOGLE SCRIPT ---
                 try {
-                    const response = await fetch(SCRIPT_URL, {
-                        method: 'POST',
-                        mode: 'no-cors', // Important pour Google Script
-                        cache: 'no-cache',
-                        body: JSON.stringify({ qr: decodedText.trim() })
+                    // On utilise une URL temporaire pour contourner le mode 'no-cors' et lire la réponse
+                    const response = await fetch(SCRIPT_URL + "?qr=" + decodedText.trim(), {
+                        method: 'GET' // On passe en GET pour pouvoir lire le numéro en retour
                     });
                     
-                    // Comme on est en 'no-cors', on ne peut pas lire la réponse JSON, 
-                    // mais le script s'exécute quand même côté Google.
-                    passageDisplay.innerText = "✅ Passage enregistré & Email envoyé";
+                    const resData = await response.json();
+                    
+                    if (resData.result === "success") {
+                        document.getElementById('passageDisplay').innerHTML = "N° " + resData.num;
+                    } else {
+                        document.getElementById('passageDisplay').innerText = "Erreur: " + resData.message;
+                    }
                 } catch (error) {
                     console.error(error);
-                    passageDisplay.innerText = "❌ Erreur d'enregistrement";
+                    // Si le GET échoue, on tente le POST par sécurité (mode dégradé)
+                    fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ qr: decodedText.trim() })});
+                    document.getElementById('passageDisplay').innerText = "✅ Enregistré";
                 }
 
             } else {
@@ -124,3 +137,4 @@
     </script>
 </body>
 </html>
+
