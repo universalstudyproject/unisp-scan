@@ -13,21 +13,17 @@
         .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); }
         .tab-active { border-bottom: 3px solid #3b82f6; color: #3b82f6; }
         .status-badge { padding: 2px 10px; border-radius: 9999px; font-size: 0.75rem; font-weight: bold; }
-        
         #fab-scan {
             position: fixed; bottom: 30px; right: 30px; width: 70px; height: 70px;
             border-radius: 50%; display: flex; align-items: center; justify-content: center;
             z-index: 50; box-shadow: 0 10px 25px rgba(59, 130, 246, 0.5);
         }
-
         #full-scan-overlay {
             position: fixed; inset: 0; background: #0f172a; z-index: 200;
             display: none; flex-direction: column; align-items: center;
         }
-
         #reader { width: 100% !important; height: 60% !important; border: none !important; }
         #reader video { object-fit: cover !important; }
-
         .attivo-bg { background: linear-gradient(135deg, #16a34a 0%, #064e3b 100%) !important; }
         .inattivo-bg { background: linear-gradient(135deg, #dc2626 0%, #7f1d1d 100%) !important; }
         .already-bg { background: linear-gradient(135deg, #0277bd 0%, #01579b 100%) !important; }
@@ -73,7 +69,7 @@
 
     <div id="full-scan-overlay">
         <div class="p-6 w-full flex justify-between items-center bg-slate-900/80 backdrop-blur-md">
-            <span class="font-bold text-blue-500 tracking-widest">SCANNER ACTIF</span>
+            <span class="font-bold text-blue-500 tracking-widest text-sm">SCANNER ACTIF</span>
             <button onclick="closeScanner()" class="bg-white/10 w-10 h-10 rounded-full flex items-center justify-center text-white text-2xl">&times;</button>
         </div>
         <div id="reader"></div>
@@ -94,7 +90,6 @@
 
     <script>
         const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSc3LZw98cFyqm2XGSEYYF3IOf5fHB3Pff8vLLlCD-VgvIicvX6jYWH-QDSbn5dZvpPhHjrXoIH4Hu9/pub?gid=0&single=true&output=csv';
-        // ID PASSAGGI CORRIGÉ : 1558283585
         const PASSAGGI_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSc3LZw98cFyqm2XGSEYYF3IOf5fHB3Pff8vLLlCD-VgvIicvX6jYWH-QDSbn5dZvpPhHjrXoIH4Hu9/pub?gid=1558283585&single=true&output=csv';
         const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwwDMSA_TrLhZkdup_V7GkzS_upZ_PenHKg_NTTyQB18JKppMYgNAm47xN-L68u1BrK/exec';
 
@@ -105,18 +100,21 @@
         window.onload = () => {
             loadMembers();
             loadPassaggi();
-            setInterval(loadPassaggi, 8000);
+            setInterval(loadPassaggi, 6000); // Rafraîchissement agressif (6 sec)
         };
 
         function loadMembers() {
-            Papa.parse(CSV_URL, { download: true, header: true, complete: (res) => { 
+            Papa.parse(CSV_URL + '&t=' + new Date().getTime(), { download: true, header: true, complete: (res) => { 
                 membersData = res.data.filter(m => m.Nome); 
                 renderList(membersData); 
             }});
         }
 
         function loadPassaggi() {
-            Papa.parse(PASSAGGI_URL, { download: true, header: true, complete: (res) => {
+            // AJOUT DU CACHE-BUSTER ICI
+            const freshPassaggiUrl = PASSAGGI_URL + '&t=' + new Date().getTime();
+            
+            Papa.parse(freshPassaggiUrl, { download: true, header: true, complete: (res) => {
                 const list = document.getElementById('passaggiList');
                 const data = res.data.filter(p => p.Nome || p.Codice_QR).reverse();
                 if(data.length > 0) {
@@ -179,6 +177,7 @@
                             document.getElementById('resPassage').innerHTML = `<span class="text-xl">DÉJÀ PASSÉ</span><br>N° ${resData.num}`;
                         } else {
                             document.getElementById('resPassage').innerText = `N° ${resData.num}`;
+                            // Rechargement forcé après le scan réussi
                             setTimeout(loadPassaggi, 1500);
                         }
                     } catch (e) { document.getElementById('resPassage').innerText = "OK"; }
