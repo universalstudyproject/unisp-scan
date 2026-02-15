@@ -122,41 +122,49 @@
         function loadPassaggi() {
             const freshUrl = PASSAGGI_URL + '&cache=' + Math.random();
             
-            Papa.parse(freshUrl, { download: true, header: true, complete: (res) => {
-                const list = document.getElementById('passaggiList');
-                const todayStr = new Date().toLocaleDateString('it-IT'); // Format DD/MM/YYYY
+            Papa.parse(freshUrl, { 
+                download: true, 
+                header: true, 
+                complete: (res) => {
+                    const list = document.getElementById('passaggiList');
+                    const todayStr = new Date().toLocaleDateString('it-IT');
 
-                // Filtrage strict : que les noms d'aujourd'hui
-                const dataToday = res.data.filter(p => {
-                    const rowValues = Object.values(p).join(' ');
-                    return (p.Nome || p.Codice_QR) && rowValues.includes(todayStr);
-                }).reverse();
+                    // 1. On filtre les données reçues
+                    const dataToday = res.data.filter(p => {
+                        const rowValues = Object.values(p).join(' ');
+                        return (p.Nome || p.Codice_QR) && rowValues.includes(todayStr);
+                    }).reverse();
 
-                // --- LOGIQUE ANTI-CACHE GOOGLE ---
-                // Si Google renvoie une version plus courte que ce qu'on a déjà affiché, 
-                // on ignore pour éviter la "disparition".
-                if (dataToday.length < lastDataLength) {
-                    console.log("Ignored: Google Cache serve old data");
-                    return; 
-                }
-                
-                lastDataLength = dataToday.length;
+                    // 2. LOGIQUE DE FLUIDITÉ : 
+                    // Si la liste est vide mais qu'on avait déjà des gens affichés (lastDataLength > 0),
+                    // on ne fait RIEN. On attend que Google Sheets se mette à jour.
+                    if (dataToday.length === 0 && lastDataLength > 0) {
+                        console.log("Attente de la mise à jour Google... On garde l'affichage actuel.");
+                        return; 
+                    }
 
-                if(dataToday.length > 0) {
+                    // 3. Si c'est vraiment le début de la journée (vraiment 0 passages)
+                    if (dataToday.length === 0 && lastDataLength === 0) {
+                        list.innerHTML = `<p class="text-center text-slate-600 py-10 italic">Aucun passage aujourd'hui (${todayStr})</p>`;
+                        return;
+                    }
+                    
+                    // 4. Si on a des nouvelles données, on met à jour le compteur et l'affichage
+                    lastDataLength = dataToday.length;
+
                     list.innerHTML = dataToday.slice(0, 15).map(p => `
-                        <div class="glass p-4 rounded-2xl flex justify-between items-center border-l-4 border-blue-500 bg-white/5 shadow-sm">
+                        <div class="glass p-4 rounded-2xl flex justify-between items-center border-l-4 border-blue-500 bg-white/5 shadow-sm mb-3">
                             <div class="flex flex-col">
                                 <span class="font-bold text-white text-sm">${p.Nome || 'Utilisateur'}</span>
                                 <span class="text-[10px] text-slate-500 font-mono italic">${p.Heure || 'Enregistré'}</span>
                             </div>
-                            <span class="bg-blue-600 text-white text-[11px] px-3 py-1 rounded-lg font-black tracking-tighter">N° ${p.Numero_Passaggio || '?'}</span>
+                            <span class="bg-blue-600 text-white text-[11px] px-3 py-1 rounded-lg font-black tracking-tighter shadow-lg shadow-blue-500/20">N° ${p.Numero_Passaggio || '?'}</span>
                         </div>
                     `).join('');
-                } else {
-                    list.innerHTML = `<p class="text-center text-slate-600 py-10 italic">Aucun passage aujourd'hui (${todayStr})</p>`;
+                    
+                    document.getElementById('last-update').innerText = "Sync: " + new Date().toLocaleTimeString();
                 }
-                document.getElementById('last-update').innerText = "Sync: " + new Date().toLocaleTimeString();
-            }});
+            });
         }
 
         // --- SCANNER ---
@@ -287,3 +295,4 @@
     </script>
 </body>
 </html>
+
