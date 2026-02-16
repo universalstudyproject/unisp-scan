@@ -205,14 +205,43 @@
         }
 
         function loadPassaggi() {
-            Papa.parse(PASSAGGI_URL + '&cache=' + Math.random(), { download: true, header: true, complete: (res) => {
-                const list = document.getElementById('passaggiList');
-                const todayStr = new Date().toLocaleDateString('it-IT');
-                const dataToday = res.data.filter(p => {
-                    const rowValues = Object.values(p).join(' ');
-                    return (p.Nome || p.Codice_QR) && rowValues.includes(todayStr);
-                }).reverse();
-                if(dataToday.length > 0) {
+            // On force le rafraîchissement avec un paramètre unique
+            const nocache = '&cache=' + new Date().getTime();
+            
+            Papa.parse(PASSAGGI_URL + nocache, { 
+                download: true, 
+                header: true, 
+                complete: (res) => {
+                    const list = document.getElementById('passaggiList');
+                    const todayStr = new Date().toLocaleDateString('it-IT');
+
+                    // 1. On filtre les données pour aujourd'hui
+                    const dataToday = res.data.filter(p => {
+                        const rowValues = Object.values(p).join(' ');
+                        return (p.Nome || p.Codice_QR) && rowValues.includes(todayStr);
+                    }).reverse();
+
+                    // 2. LOGIQUE DE NETTOYAGE
+                    // Si on ne trouve rien pour aujourd'hui :
+                    if (dataToday.length === 0) {
+                        // On vérifie si le fichier reçu contient quand même des données (ex: celles d'hier)
+                        const hasAnyData = res.data.some(p => p.Nome || p.Codice_QR);
+                        
+                        if (hasAnyData) {
+                            // Le fichier est valide mais ne contient rien pour aujourd'hui -> ON VIDE L'ECRAN
+                            list.innerHTML = `<p class="text-center text-slate-600 py-10 italic">Aucun passage aujourd'hui (${todayStr})</p>`;
+                            lastDataLength = 0; // On remet le compteur à zéro
+                        } else {
+                            // Le fichier est totalement vide (erreur de chargement) -> ON GARDE L'AFFICHAGE ACTUEL
+                            console.log("Fichier vide reçu, cache Google probable. On attend.");
+                        }
+                        document.getElementById('last-update').innerText = "Sync: " + new Date().toLocaleTimeString();
+                        return;
+                    }
+
+                    // 3. Mise à jour normale si on a des données aujourd'hui
+                    lastDataLength = dataToday.length;
+
                     list.innerHTML = dataToday.slice(0, 15).map(p => `
                         <div class="glass p-4 rounded-2xl flex justify-between items-center border-l-4 border-blue-500 bg-white/5 mb-3">
                             <div class="flex flex-col">
@@ -222,11 +251,10 @@
                             <span class="bg-blue-600 text-white text-[11px] px-3 py-1 rounded-lg font-black tracking-tighter shadow-lg shadow-blue-500/20">N° ${p.Numero_Passaggio || '?'}</span>
                         </div>
                     `).join('');
-                } else {
-                    list.innerHTML = `<p class="text-center text-slate-600 py-10 italic">Aucun passage aujourd'hui</p>`;
+                    
+                    document.getElementById('last-update').innerText = "Sync: " + new Date().toLocaleTimeString();
                 }
-                document.getElementById('last-update').innerText = "Sync: " + new Date().toLocaleTimeString();
-            }});
+            });
         }
 
         function switchTab(tab) {
@@ -328,3 +356,4 @@
     </script>
 </body>
 </html>
+
