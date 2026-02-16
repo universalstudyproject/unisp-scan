@@ -12,102 +12,86 @@
         body { font-family: 'Inter', sans-serif; background: #0f172a; color: #f8fafc; margin: 0; overflow-x: hidden; }
         .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); }
         .tab-active { border-bottom: 3px solid #3b82f6; color: #3b82f6; }
-        .status-badge { padding: 2px 10px; border-radius: 9999px; font-size: 0.75rem; font-weight: bold; }
-        
-        #fab-scan {
-            position: fixed; bottom: 30px; right: 30px; width: 70px; height: 70px;
-            border-radius: 50%; display: flex; align-items: center; justify-content: center;
-            z-index: 50; box-shadow: 0 10px 25px rgba(59, 130, 246, 0.5);
-        }
-
-        #full-scan-overlay {
-            position: fixed; inset: 0; background: #0f172a; z-index: 200;
-            display: none; flex-direction: column; align-items: center;
-        }
-
-        #reader { width: 100% !important; height: 60% !important; border: none !important; }
-        #reader video { object-fit: cover !important; }
-
+        #login-overlay { position: fixed; inset: 0; background: #0f172a; z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 20px; }
+        #full-scan-overlay { position: fixed; inset: 0; background: #0f172a; z-index: 200; display: none; flex-direction: column; align-items: center; }
+        #reader { width: 100% !important; height: 60% !important; }
         .attivo-bg { background: linear-gradient(135deg, #16a34a 0%, #064e3b 100%) !important; }
         .inattivo-bg { background: linear-gradient(135deg, #dc2626 0%, #7f1d1d 100%) !important; }
         .already-bg { background: linear-gradient(135deg, #0277bd 0%, #01579b 100%) !important; }
-        .passage-num { font-size: 4rem; font-weight: 900; color: #ffeb3b; line-height: 1; }
+        .passage-num { font-size: 4rem; font-weight: 900; color: #ffeb3b; }
+        .hidden { display: none !important; }
     </style>
 </head>
 <body class="pb-24">
+
+    <div id="login-overlay">
+        <div class="glass w-full max-w-sm p-8 rounded-[2.5rem] space-y-6 text-center">
+            <h1 class="text-2xl font-black italic text-white">UNISP <span class="text-blue-500">PRO+</span></h1>
+            <p class="text-slate-400 text-sm">Veuillez vous connecter pour accéder au système</p>
+            <input type="email" id="loginEmail" placeholder="Email" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-4 text-white focus:ring-2 focus:ring-blue-500 outline-none">
+            <input type="password" id="loginPass" placeholder="Mot de passe" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-4 text-white focus:ring-2 focus:ring-blue-500 outline-none">
+            <button onclick="attemptLogin()" id="btnLogin" class="w-full bg-blue-600 py-4 rounded-xl font-bold hover:bg-blue-700 transition-colors">CONNEXION</button>
+        </div>
+    </div>
 
     <header class="p-6 text-center">
         <h1 class="text-lg font-bold tracking-tight text-white italic">UNISP <span class="text-blue-500 font-light uppercase not-italic text-sm">PRO+ Dashboard</span></h1>
     </header>
 
     <main class="max-w-md mx-auto px-4">
+        <div id="staff-controls" class="hidden mb-6 space-y-4">
+            <div class="glass p-5 rounded-3xl border border-blue-500/20">
+                <h3 class="text-xs font-bold text-blue-400 uppercase tracking-widest mb-3 text-center">Autorisation Bénévoles (48h)</h3>
+                <div id="benevolesList" class="space-y-2 max-h-48 overflow-y-auto mb-4 p-2 bg-black/20 rounded-xl">
+                    <p class="text-center text-[10px] text-slate-500 py-4">Chargement des bénévoles...</p>
+                </div>
+                <button onclick="saveAuthorizations()" class="w-full bg-blue-600 py-3 rounded-xl font-bold text-sm shadow-lg shadow-blue-500/20">ACTIVER LA SÉLECTION</button>
+            </div>
+        </div>
+
         <nav class="flex justify-around mb-6 border-b border-slate-800">
             <button onclick="switchTab('scan')" id="tab-scan" class="pb-3 px-6 font-bold tab-active">PASSAGES</button>
-            <button onclick="switchTab('list')" id="tab-list" class="pb-3 px-6 font-bold text-slate-500">MEMBRES</button>
+            <button onclick="switchTab('list')" id="tab-list" class="pb-3 px-6 font-bold text-slate-500 hidden">MEMBRES</button>
         </nav>
 
         <section id="view-scan" class="space-y-4">
-            <div class="flex justify-between items-center px-1">
-                <h3 class="text-xs font-bold text-slate-400 flex items-center gap-2 tracking-widest uppercase">
-                    <span class="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span> Aujourd'hui
-                </h3>
-                <span id="last-update" class="text-[10px] text-slate-600 italic">Sync...</span>
-            </div>
-            
             <div id="passaggiList" class="space-y-3">
-                <p class="text-center text-slate-600 py-10 italic">Initialisation...</p>
+                <p class="text-center text-slate-600 py-10 italic">Chargement des flux...</p>
             </div>
         </section>
 
         <section id="view-list" class="hidden space-y-4">
-            <input type="text" id="searchInput" onkeyup="filterMembers()" placeholder="Rechercher par nom..." 
-                class="w-full bg-slate-800 border border-slate-700 rounded-xl px-5 py-4 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-xl">
+            <input type="text" id="searchInput" onkeyup="filterMembers()" placeholder="Rechercher par nom..." class="w-full bg-slate-800 border border-slate-700 rounded-xl px-5 py-4 text-white focus:ring-2 focus:ring-blue-500 outline-none shadow-xl">
             <div id="membersList" class="space-y-3"></div>
         </section>
     </main>
 
-    <button id="fab-scan" onclick="openScanner()" class="bg-blue-600 active:scale-90 transition-transform">
+    <button id="fab-scan" onclick="openScanner()" class="bg-blue-600 active:scale-90 transition-transform hidden">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-9 w-9 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
         </svg>
     </button>
 
     <div id="full-scan-overlay">
-        <div class="p-6 w-full flex justify-between items-center bg-slate-900/80 backdrop-blur-md">
-            <span class="font-bold text-blue-500 tracking-widest text-sm underline underline-offset-8 decoration-blue-500/30">SCANNER ACTIF</span>
+        <div class="p-6 w-full flex justify-between items-center bg-slate-900/80">
+            <span class="font-bold text-blue-500 text-sm tracking-widest uppercase">SCANNER ACTIF</span>
             <div class="flex gap-4">
-                <button onclick="toggleManualInput()" class="bg-blue-600/20 w-10 h-10 rounded-full flex items-center justify-center text-blue-400 active:scale-90">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5L7 9m0 0l4 4M7 9h14M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                    </svg>
-                </button>
-                <button onclick="closeScanner()" class="bg-white/10 w-10 h-10 rounded-full flex items-center justify-center text-white text-2xl active:scale-90">&times;</button>
+                <button onclick="toggleManualInput()" class="bg-blue-600/20 w-10 h-10 rounded-full flex items-center justify-center text-blue-400">⌨️</button>
+                <button onclick="closeScanner()" class="bg-white/10 w-10 h-10 rounded-full text-white">&times;</button>
             </div>
         </div>
-        
         <div id="reader"></div>
-
         <div id="manual-input-zone" class="absolute top-24 left-0 right-0 px-6 hidden z-[210]">
-            <div class="glass p-4 rounded-2xl flex gap-2 shadow-2xl border border-blue-500/30">
-                <input type="text" id="manualCode" placeholder="Code membre..." 
-                    onkeypress="if(event.key === 'Enter') submitManualCode()"
-                    class="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono">
-                <button onclick="submitManualCode()" class="bg-blue-600 px-6 rounded-xl font-bold text-xs uppercase">OK</button>
+            <div class="glass p-4 rounded-2xl flex gap-2 border border-blue-500/30">
+                <input type="text" id="manualCode" placeholder="Code membre..." class="flex-1 bg-slate-800 rounded-xl px-4 text-white outline-none">
+                <button onclick="submitManualCode()" class="bg-blue-600 px-6 py-3 rounded-xl font-bold">OK</button>
             </div>
         </div>
-
-        <div id="scan-feedback" class="absolute inset-x-0 bottom-0 h-1/2 glass flex flex-col items-center justify-center text-center p-8 hidden animate-in slide-in-from-bottom duration-300 z-[220]">
+        <div id="scan-feedback" class="absolute inset-x-0 bottom-0 h-1/2 glass flex flex-col items-center justify-center text-center p-8 hidden z-[220]">
             <p id="resName" class="text-3xl font-bold mb-2"></p>
             <p id="resStatus" class="text-sm uppercase tracking-widest mb-6"></p>
             <div id="resPassage" class="passage-num mb-8"></div>
-            <button onclick="document.getElementById('scan-feedback').classList.add('hidden'); isProcessing = false;" class="bg-white/20 px-10 py-3 rounded-full text-xs font-bold uppercase tracking-widest">Suivant</button>
-        </div>
-    </div>
-
-    <div id="memberModal" class="fixed inset-0 bg-black/90 hidden z-[300] flex items-center justify-center p-4 backdrop-blur-md">
-        <div class="glass w-full max-w-sm rounded-[2.5rem] overflow-hidden border border-white/10 shadow-2xl">
-            <div id="modalContent" class="p-8 max-h-[70vh] overflow-y-auto space-y-4 text-sm leading-relaxed"></div>
-            <div class="p-6"><button onclick="closeModal()" class="w-full py-4 bg-blue-600 rounded-2xl font-bold">FERMER</button></div>
+            <button onclick="document.getElementById('scan-feedback').classList.add('hidden'); isProcessing = false;" class="bg-white/20 px-10 py-3 rounded-full text-xs font-bold uppercase">Suivant</button>
         </div>
     </div>
 
@@ -119,19 +103,81 @@
         let membersData = [];
         let html5QrCode = null;
         let isProcessing = false;
-        let lastDataLength = 0;
+        let currentUser = null;
 
-        window.onload = () => {
-            loadMembers();
+        async function attemptLogin() {
+            const email = document.getElementById('loginEmail').value.trim();
+            const pass = document.getElementById('loginPass').value.trim();
+            const btn = document.getElementById('btnLogin');
+            if(!email || !pass) return alert("Veuillez remplir tous les champs");
+
+            btn.disabled = true;
+            btn.innerText = "VERIFICATION...";
+
+            try {
+                const response = await fetch(`${SCRIPT_URL}?action=login&email=${encodeURIComponent(email)}&pass=${encodeURIComponent(pass)}`);
+                const data = await response.json();
+
+                if(data.result === "success") {
+                    currentUser = data;
+                    document.getElementById('login-overlay').classList.add('hidden');
+                    initApp();
+                } else {
+                    alert(data.message);
+                }
+            } catch (e) { alert("Erreur de connexion au serveur"); }
+            btn.disabled = false;
+            btn.innerText = "CONNEXION";
+        }
+
+        function initApp() {
             loadPassaggi();
             setInterval(loadPassaggi, 6000);
-        };
+            
+            // Appliquer les droits
+            if(currentUser.canScan) document.getElementById('fab-scan').classList.remove('hidden');
+            
+            if(currentUser.role === "Staff" || currentUser.role === "Admin") {
+                document.getElementById('tab-list').classList.remove('hidden');
+                document.getElementById('staff-controls').classList.remove('hidden');
+                loadMembers();
+                fetchBenevoles();
+            }
+        }
 
+        // --- Logique Staff : Gestion des bénévoles ---
+        async function fetchBenevoles() {
+            const res = await fetch(`${SCRIPT_URL}?action=getBenevoles`);
+            const benevoles = await res.json();
+            const list = document.getElementById('benevolesList');
+            list.innerHTML = benevoles.map(b => `
+                <label class="flex items-center gap-3 p-3 bg-white/5 rounded-xl cursor-pointer hover:bg-white/10 transition-all">
+                    <input type="checkbox" name="bene" value="${b.email}" class="w-5 h-5 rounded accent-blue-500">
+                    <div class="flex flex-col">
+                        <span class="text-xs font-bold text-white">${b.nom}</span>
+                        <span class="text-[9px] text-slate-500">${b.email}</span>
+                    </div>
+                </label>
+            `).join('');
+        }
+
+        async function saveAuthorizations() {
+            const checkboxes = document.querySelectorAll('input[name="bene"]:checked');
+            const emails = Array.from(checkboxes).map(c => c.value);
+            if(emails.length === 0) return alert("Sélectionnez au moins un bénévole");
+            
+            try {
+                await fetch(`${SCRIPT_URL}?action=authorize&emails=${JSON.stringify(emails)}`);
+                alert("Autorisation accordée pour 48h !");
+                checkboxes.forEach(c => c.checked = false);
+            } catch (e) { alert("Erreur serveur"); }
+        }
+
+        // --- Fonctions de base (Filtrées par permission) ---
         function loadMembers() {
-            // Version stable sans cache-buster agressif pour garantir l'affichage
-            Papa.parse(CSV_URL, { download: true, header: true, complete: (res) => { 
-                membersData = res.data.filter(m => m.Nome); 
-                renderList(membersData); 
+            Papa.parse(CSV_URL, { download: true, header: true, complete: (res) => {
+                membersData = res.data.filter(m => m.Nome);
+                renderList(membersData);
             }});
         }
 
@@ -140,66 +186,52 @@
             Papa.parse(PASSAGGI_URL + nocache, { download: true, header: true, complete: (res) => {
                 const list = document.getElementById('passaggiList');
                 const todayStr = new Date().toLocaleDateString('it-IT');
-
                 const dataToday = res.data.filter(p => {
                     const rowValues = Object.values(p).join(' ');
                     return (p.Nome || p.Codice_QR) && rowValues.includes(todayStr);
                 }).reverse();
 
-                if (dataToday.length === 0 && lastDataLength > 0) return; 
-                lastDataLength = dataToday.length;
-
                 if(dataToday.length > 0) {
                     list.innerHTML = dataToday.slice(0, 15).map(p => `
                         <div class="glass p-4 rounded-2xl flex justify-between items-center border-l-4 border-blue-500 bg-white/5 mb-3">
                             <div class="flex flex-col">
-                                <span class="font-bold text-white text-sm">${p.Nome || 'Utilisateur'}</span>
+                                <span class="font-bold text-white text-sm">${p.Nome || 'Membro'}</span>
                                 <span class="text-[10px] text-slate-500 font-mono italic">${p.Heure || 'Enregistré'}</span>
                             </div>
-                            <span class="bg-blue-600 text-white text-[11px] px-3 py-1 rounded-lg font-black">N° ${p.Numero_Passaggio || '?'}</span>
+                            <span class="bg-blue-600 text-white text-[11px] px-3 py-1 rounded-lg font-black tracking-tighter shadow-lg shadow-blue-500/20">N° ${p.Numero_Passaggio || '?'}</span>
                         </div>
                     `).join('');
                 } else {
-                    list.innerHTML = `<p class="text-center text-slate-600 py-10 italic">Aucun passage aujourd'hui (${todayStr})</p>`;
+                    list.innerHTML = `<p class="text-center text-slate-600 py-10 italic">Aucun passage aujourd'hui</p>`;
                 }
-                document.getElementById('last-update').innerText = "Sync: " + new Date().toLocaleTimeString();
             }});
         }
 
+        // Gérer les onglets
+        function switchTab(tab) {
+            document.getElementById('view-scan').classList.toggle('hidden', tab !== 'scan');
+            document.getElementById('view-list').classList.toggle('hidden', tab !== 'list');
+            document.getElementById('tab-scan').className = tab === 'scan' ? 'pb-3 px-6 font-bold tab-active text-blue-400' : 'pb-3 px-6 font-bold text-slate-500';
+            document.getElementById('tab-list').className = tab === 'list' ? 'pb-3 px-6 font-bold tab-active text-blue-400' : 'pb-3 px-6 font-bold text-slate-500';
+        }
+
+        // --- Fonctions Scanner (Inchangées dans leur logique interne) ---
         function openScanner() {
-            window.history.pushState({view: 'scanner'}, ""); 
+            if(!currentUser.canScan) return;
             document.getElementById('full-scan-overlay').style.display = 'flex';
-            document.getElementById('scan-feedback').classList.add('hidden');
             html5QrCode = new Html5Qrcode("reader");
             html5QrCode.start({ facingMode: "environment" }, { fps: 15, qrbox: 280 }, onScanSuccess);
         }
-
-        function closeScanner() {
-            isProcessing = false;
-            document.getElementById('manual-input-zone').classList.add('hidden');
-            if (html5QrCode) {
-                html5QrCode.stop().then(() => {
-                    document.getElementById('full-scan-overlay').style.display = 'none';
-                    loadPassaggi();
-                }).catch(() => { document.getElementById('full-scan-overlay').style.display = 'none'; });
-            } else {
-                document.getElementById('full-scan-overlay').style.display = 'none';
-            }
+        function closeScanner() { 
+            if(html5QrCode) html5QrCode.stop().then(() => { document.getElementById('full-scan-overlay').style.display = 'none'; });
         }
-
-        function toggleManualInput() {
-            const zone = document.getElementById('manual-input-zone');
-            zone.classList.toggle('hidden');
-            if (!zone.classList.contains('hidden')) document.getElementById('manualCode').focus();
-        }
-
+        function toggleManualInput() { document.getElementById('manual-input-zone').classList.toggle('hidden'); }
         function submitManualCode() {
             const input = document.getElementById('manualCode');
-            const code = input.value.trim();
-            if (code.length > 0) {
+            if (input.value.trim().length > 0) {
+                onScanSuccess(input.value.trim());
+                input.value = "";
                 document.getElementById('manual-input-zone').classList.add('hidden');
-                input.value = ""; 
-                onScanSuccess(code); 
             }
         }
 
@@ -212,7 +244,6 @@
             feedback.classList.remove('hidden');
 
             if (member) {
-                playFeedback(); 
                 const status = (member.Stato || "").toUpperCase();
                 document.getElementById('resName').innerText = `${member.Nome} ${member.Cognome}`;
                 document.getElementById('resStatus').innerText = status;
@@ -222,7 +253,7 @@
                     try {
                         const response = await fetch(`${SCRIPT_URL}?qr=${encodeURIComponent(cleanInput)}`);
                         const resData = await response.json();
-                        document.getElementById('resPassage').innerHTML = resData.result === "already_scanned" ? `<span class="text-xl">DÉJÀ PASSÉ</span><br>N° ${resData.num}` : `N° ${resData.num}`;
+                        document.getElementById('resPassage').innerHTML = `N° ${resData.num}`;
                         if (resData.result === "already_scanned") feedback.classList.replace('attivo-bg', 'already-bg');
                         setTimeout(loadPassaggi, 1500);
                     } catch (e) { document.getElementById('resPassage').innerText = "OK"; }
@@ -236,24 +267,6 @@
                 document.getElementById('resPassage').innerText = cleanInput;
             }
             setTimeout(() => { feedback.classList.add('hidden'); isProcessing = false; }, 3000);
-        }
-
-        function playFeedback() {
-            if (navigator.vibrate) navigator.vibrate(100);
-            try {
-                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                const osc = audioCtx.createOscillator();
-                const gain = audioCtx.createGain();
-                osc.connect(gain); gain.connect(audioCtx.destination);
-                osc.start(); gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.2);
-            } catch(e){}
-        }
-
-        function switchTab(tab) {
-            document.getElementById('view-scan').classList.toggle('hidden', tab !== 'scan');
-            document.getElementById('view-list').classList.toggle('hidden', tab !== 'list');
-            document.getElementById('tab-scan').className = tab === 'scan' ? 'pb-3 px-6 font-bold tab-active text-blue-400' : 'pb-3 px-6 font-bold text-slate-500';
-            document.getElementById('tab-list').className = tab === 'list' ? 'pb-3 px-6 font-bold tab-active text-blue-400' : 'pb-3 px-6 font-bold text-slate-500';
         }
 
         function renderList(data) {
@@ -281,7 +294,7 @@
         function showDetails(idx) {
             const m = membersData[idx];
             const content = Object.entries(m).map(([key, value]) => `
-                <div class="bg-white/5 p-4 rounded-2xl border border-white/5">
+                <div class="bg-white/5 p-4 rounded-2xl border border-white/5 text-sm">
                     <p class="text-[9px] uppercase text-slate-500 font-bold mb-1 tracking-widest">${key.replace(/_/g, ' ')}</p>
                     <p class="text-slate-100 font-medium">${value || '-'}</p>
                 </div>
@@ -291,10 +304,6 @@
         }
 
         function closeModal() { document.getElementById('memberModal').classList.add('hidden'); }
-
-        window.onpopstate = function() {
-            if (document.getElementById('full-scan-overlay').style.display === 'flex') closeScanner();
-        };
     </script>
 </body>
 </html>
