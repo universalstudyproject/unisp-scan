@@ -89,9 +89,9 @@
 
         <div id="manual-input-zone" class="absolute top-24 left-0 right-0 px-6 hidden z-[210]">
             <div class="glass p-4 rounded-2xl flex gap-2 shadow-2xl border border-blue-500/30">
-                <input type="text" id="manualCode" placeholder="Code à 6 caractères" 
+                <input type="text" id="manualCode" placeholder="Entrez le code" 
                     onkeypress="if(event.key === 'Enter') submitManualCode()"
-                    class="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase font-mono">
+                    class="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono">
                 <button onclick="submitManualCode()" class="bg-blue-600 px-6 rounded-xl font-bold active:scale-95 transition-transform text-xs uppercase">OK</button>
             </div>
         </div>
@@ -150,11 +150,7 @@
                         return (p.Nome || p.Codice_QR) && rowValues.includes(todayStr);
                     }).reverse();
 
-                    // Sécurité intelligente contre le cache vide de Google
-                    if (dataToday.length === 0 && lastDataLength > 0) {
-                        console.log("Alerte Cache : On garde l'affichage précédent.");
-                        return; 
-                    }
+                    if (dataToday.length === 0 && lastDataLength > 0) return; 
 
                     lastDataLength = dataToday.length;
 
@@ -176,8 +172,6 @@
             });
         }
 
-        // --- GESTION SCANNER & MANUEL ---
-
         function openScanner() {
             window.history.pushState({view: 'scanner'}, ""); 
             document.getElementById('full-scan-overlay').style.display = 'flex';
@@ -193,7 +187,7 @@
             if (html5QrCode) {
                 html5QrCode.stop().then(() => {
                     document.getElementById('full-scan-overlay').style.display = 'none';
-                    loadPassaggi();
+                    setTimeout(loadPassaggi, 500);
                 }).catch(() => { document.getElementById('full-scan-overlay').style.display = 'none'; });
             } else {
                 document.getElementById('full-scan-overlay').style.display = 'none';
@@ -222,13 +216,20 @@
             if (isProcessing) return;
             isProcessing = true;
 
-            const member = membersData.find(m => m.Codice_QR && m.Codice_QR.trim() === decodedText.trim());
+            const cleanInput = String(decodedText).trim();
+            
+            // Recherche robuste (insensible à la casse et au type)
+            const member = membersData.find(m => {
+                if (!m.Codice_QR) return false;
+                return String(m.Codice_QR).trim().toLowerCase() === cleanInput.toLowerCase();
+            });
+
             const feedback = document.getElementById('scan-feedback');
             feedback.classList.remove('hidden');
 
             if (member) {
                 playFeedback(); 
-                const status = member.Stato ? member.Stato.toUpperCase() : "INCONNU";
+                const status = (member.Stato || "").toUpperCase();
                 document.getElementById('resName').innerText = `${member.Nome} ${member.Cognome}`;
                 document.getElementById('resStatus').innerText = status;
                 
@@ -236,7 +237,7 @@
                     feedback.className = "absolute inset-x-0 bottom-0 h-1/2 glass flex flex-col items-center justify-center text-center p-8 attivo-bg z-[220]";
                     document.getElementById('resPassage').innerText = "...";
                     try {
-                        const response = await fetch(`${SCRIPT_URL}?qr=${decodedText.trim()}`);
+                        const response = await fetch(`${SCRIPT_URL}?qr=${encodeURIComponent(cleanInput)}`);
                         const resData = await response.json();
                         if (resData.result === "already_scanned") {
                             feedback.className = "absolute inset-x-0 bottom-0 h-1/2 glass flex flex-col items-center justify-center text-center p-8 already-bg z-[220]";
@@ -253,7 +254,7 @@
             } else {
                 feedback.className = "absolute inset-x-0 bottom-0 h-1/2 glass flex flex-col items-center justify-center text-center p-8 bg-slate-800 z-[220]";
                 document.getElementById('resName').innerText = "INCONNU";
-                document.getElementById('resPassage').innerText = "NON TROUVÉ";
+                document.getElementById('resPassage').innerText = cleanInput; // On affiche ce qui a été tapé pour vérifier
             }
             setTimeout(() => { 
                 feedback.classList.add('hidden'); 
@@ -274,8 +275,6 @@
                 osc.stop(audioCtx.currentTime + 0.2);
             } catch(e){}
         }
-
-        // --- LOGIQUE UI ---
 
         function switchTab(tab) {
             document.getElementById('view-scan').classList.toggle('hidden', tab !== 'scan');
