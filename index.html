@@ -205,43 +205,42 @@
         }
 
         function loadPassaggi() {
-            // On force le rafraîchissement avec un paramètre unique
             const nocache = '&cache=' + new Date().getTime();
-            
             Papa.parse(PASSAGGI_URL + nocache, { 
                 download: true, 
                 header: true, 
                 complete: (res) => {
                     const list = document.getElementById('passaggiList');
-                    const todayStr = new Date().toLocaleDateString('it-IT');
-
-                    // 1. On filtre les données pour aujourd'hui
+                    
+                    // Format d'aujourd'hui : "16/02/2026"
+                    const now = new Date();
+                    const day = String(now.getDate()).padStart(2, '0');
+                    const month = String(now.getMonth() + 1).padStart(2, '0');
+                    const year = now.getFullYear();
+                    const todayStr = `${day}/${month}/${year}`;
+        
+                    // FILTRE INTELLIGENT
                     const dataToday = res.data.filter(p => {
+                        // On récupère toutes les valeurs de la ligne (Nom, Date, etc.)
                         const rowValues = Object.values(p).join(' ');
+                        // On vérifie si la ligne contient le nom ET si elle commence par la date du jour
+                        // On utilise .includes() pour être sûr de trouver la date même avec l'heure derrière
                         return (p.Nome || p.Codice_QR) && rowValues.includes(todayStr);
                     }).reverse();
-
-                    // 2. LOGIQUE DE NETTOYAGE
-                    // Si on ne trouve rien pour aujourd'hui :
+        
+                    // Logique de nettoyage de l'écran
                     if (dataToday.length === 0) {
-                        // On vérifie si le fichier reçu contient quand même des données (ex: celles d'hier)
                         const hasAnyData = res.data.some(p => p.Nome || p.Codice_QR);
-                        
                         if (hasAnyData) {
-                            // Le fichier est valide mais ne contient rien pour aujourd'hui -> ON VIDE L'ECRAN
                             list.innerHTML = `<p class="text-center text-slate-600 py-10 italic">Aucun passage aujourd'hui (${todayStr})</p>`;
-                            lastDataLength = 0; // On remet le compteur à zéro
-                        } else {
-                            // Le fichier est totalement vide (erreur de chargement) -> ON GARDE L'AFFICHAGE ACTUEL
-                            console.log("Fichier vide reçu, cache Google probable. On attend.");
+                            lastDataLength = 0;
                         }
                         document.getElementById('last-update').innerText = "Sync: " + new Date().toLocaleTimeString();
                         return;
                     }
-
-                    // 3. Mise à jour normale si on a des données aujourd'hui
+        
                     lastDataLength = dataToday.length;
-
+        
                     list.innerHTML = dataToday.slice(0, 15).map(p => `
                         <div class="glass p-4 rounded-2xl flex justify-between items-center border-l-4 border-blue-500 bg-white/5 mb-3">
                             <div class="flex flex-col">
@@ -356,4 +355,5 @@
     </script>
 </body>
 </html>
+
 
